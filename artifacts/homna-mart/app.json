@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Homna Mart",
+    "slug": "homna-mart",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "homna-mart",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F6F8F2"
+    },
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {},
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

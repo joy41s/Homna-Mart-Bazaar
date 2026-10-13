@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/"
+title = "Homna Mart"
+description = "A mobile-first grocery shopping app for customers in Homna, Cumilla, Bangladesh. Browse groceries in Bangla, manage a cart, and place sample Cash on Delivery orders using local sample data."
+version = "1.0.0"
+id = "artifacts/homna-mart"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/" ]
+localPort = 21790
+
+[services.development]
+run = "pnpm --filter @workspace/homna-mart run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/homna-mart", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/homna-mart", "run", "serve" ]
+
+[services.env]
+PORT = "21790"
+BASE_PATH = "/"
