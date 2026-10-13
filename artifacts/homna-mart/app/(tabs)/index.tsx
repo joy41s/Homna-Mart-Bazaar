@@ -1,6 +1,7 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Image,
   Keyboard,
@@ -19,18 +20,18 @@ import { useColors } from '@/hooks/useColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import type { ImageSourcePropType } from 'react-native';
+import {
+  useCreateOrder,
+  useGetStoreSettings,
+  useListCategories,
+  useListPaymentMethods,
+  useListProducts,
+  usePreviewDiscount,
+  type PaymentMethodCode,
+  type Product as ApiProduct,
+} from '@workspace/api-client-react';
 
-type CategoryId = 'pantry' | 'oil' | 'dairy' | 'vegetables';
-type Product = {
-  id: string;
-  name: string;
-  unit: string;
-  price: number;
-  category: CategoryId;
-  image: ImageSourcePropType;
-  note: string;
-};
-type CartLine = Product & { quantity: number };
+type CartLine = ApiProduct & { quantity: number };
 type CheckoutErrors = { name?: string; phone?: string; address?: string };
 type SubmittedOrder = {
   reference: string;
@@ -41,108 +42,57 @@ type SubmittedOrder = {
   total: number;
 };
 
-const products: Product[] = [
-  {
-    id: 'rice',
-    name: 'মিনিকেট চাল',
-    unit: '১ কেজি',
-    price: 78,
-    category: 'pantry',
-    image: require('@/assets/images/pantry-staples.png'),
-    note: 'নরম ও সুগন্ধি',
-  },
-  {
-    id: 'lentils',
-    name: 'মসুর ডাল',
-    unit: '১ কেজি',
-    price: 130,
-    category: 'pantry',
-    image: require('@/assets/images/pantry-staples.png'),
-    note: 'বাছাই করা',
-  },
-  {
-    id: 'oil',
-    name: 'সয়াবিন তেল',
-    unit: '১ লিটার',
-    price: 170,
-    category: 'oil',
-    image: require('@/assets/images/pantry-staples.png'),
-    note: 'পরিবারের পছন্দ',
-  },
-  {
-    id: 'eggs',
-    name: 'ফার্মের ডিম',
-    unit: '১২টি',
-    price: 150,
-    category: 'dairy',
-    image: require('@/assets/images/dairy.png'),
-    note: 'তাজা ও পুষ্টিকর',
-  },
-  {
-    id: 'milk',
-    name: 'পাস্তুরিত দুধ',
-    unit: '১ লিটার',
-    price: 90,
-    category: 'dairy',
-    image: require('@/assets/images/dairy.png'),
-    note: 'প্রতিদিনের সতেজতা',
-  },
-  {
-    id: 'vegetables',
-    name: 'মিশ্র তাজা সবজি',
-    unit: '১ কেজি',
-    price: 65,
-    category: 'vegetables',
-    image: require('@/assets/images/vegetables.png'),
-    note: 'মৌসুমি সবজি',
-  },
-  {
-    id: 'potato',
-    name: 'দেশি আলু',
-    unit: '১ কেজি',
-    price: 38,
-    category: 'vegetables',
-    image: require('@/assets/images/vegetables.png'),
-    note: 'রান্নার জন্য',
-  },
-  {
-    id: 'tomato',
-    name: 'পাকা টমেটো',
-    unit: '১ কেজি',
-    price: 55,
-    category: 'vegetables',
-    image: require('@/assets/images/vegetables.png'),
-    note: 'টাটকা বাজার থেকে',
-  },
-];
-
-const categories: { id: 'all' | CategoryId; label: string; icon: string }[] = [
-  { id: 'all', label: 'সব পণ্য', icon: 'grid' },
-  { id: 'pantry', label: 'চাল ও ডাল', icon: 'archive' },
-  { id: 'oil', label: 'তেল', icon: 'droplet' },
-  { id: 'dairy', label: 'ডিম ও দুধ', icon: 'coffee' },
-  { id: 'vegetables', label: 'শাকসবজি', icon: 'sun' },
-];
-
 const toBanglaDigits = (value: number) =>
   String(value).replace(/\d/g, (digit) => '০১২৩৪৫৬৭৮৯'[Number(digit)]);
 const taka = (value: number) => `৳${toBanglaDigits(value)}`;
-const deliveryCharge = 30;
+
+function productImage(product: Pick<ApiProduct, 'slug' | 'categorySlug' | 'imageUrl'>): ImageSourcePropType {
+  if (product.imageUrl) return { uri: product.imageUrl };
+  if (product.categorySlug === 'dairy') return require('@/assets/images/dairy.png');
+  if (product.categorySlug === 'vegetables') return require('@/assets/images/vegetables.png');
+  return require('@/assets/images/pantry-staples.png');
+}
+
+const categoryIcons: Record<string, string> = {
+  pantry: 'archive',
+  oil: 'droplet',
+  dairy: 'coffee',
+  vegetables: 'sun',
+};
 
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const queryClient = useQueryClient();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const productsQuery = useListProducts();
+  const categoriesQuery = useListCategories();
+  const settingsQuery = useGetStoreSettings();
+  const paymentMethodsQuery = useListPaymentMethods();
+  const createOrderMutation = useCreateOrder();
+  const previewDiscountMutation = usePreviewDiscount();
+  const products = productsQuery.data?.products ?? [];
+  const categoryOptions = [
+    { id: 'all', label: 'সব পণ্য', icon: 'grid' },
+    ...(categoriesQuery.data?.categories ?? []).map((category) => ({
+      id: category.slug,
+      label: category.name,
+      icon: categoryIcons[category.slug] ?? 'tag',
+    })),
+  ];
   const [screen, setScreen] = useState<'home' | 'cart'>('home');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | CategoryId>(
-    'all',
-  );
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [deliveryOptionId, setDeliveryOptionId] = useState('homna-town');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodCode>('cod');
+  const [discountCode, setDiscountCode] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; amount: number } | null>(null);
+  const [checkoutError, setCheckoutError] = useState('');
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [lastOrder, setLastOrder] = useState<SubmittedOrder | null>(null);
 
@@ -154,15 +104,23 @@ export default function HomeScreen() {
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
-  const total = subtotal + (itemCount ? deliveryCharge : 0);
+  const deliveryOptions = settingsQuery.data?.deliveryOptions ?? [];
+  const paymentMethods = paymentMethodsQuery.data?.methods ?? [
+    { code: 'cod' as const, label: 'ক্যাশ অন ডেলিভারি', enabled: true, availabilityNote: 'পণ্য হাতে পেয়ে টাকা দিন' },
+  ];
+  const selectedDelivery =
+    deliveryOptions.find((option) => option.id === deliveryOptionId) ?? deliveryOptions[0];
+  const deliveryCharge = selectedDelivery?.fee ?? settingsQuery.data?.deliveryCharge ?? 30;
+  const discountAmount = appliedDiscount?.amount ?? 0;
+  const total = subtotal + (itemCount ? deliveryCharge : 0) - discountAmount;
   const filteredProducts = products.filter((product) => {
     const categoryMatches =
-      selectedCategory === 'all' || product.category === selectedCategory;
+      selectedCategory === 'all' || product.categorySlug === selectedCategory;
     const query = search.trim().toLocaleLowerCase();
     const searchMatches =
       !query ||
       product.name.toLocaleLowerCase().includes(query) ||
-      product.note.toLocaleLowerCase().includes(query);
+      product.description.toLocaleLowerCase().includes(query);
     return categoryMatches && searchMatches;
   });
   const columns = width >= 1120 ? 4 : width >= 720 ? 3 : 2;
@@ -175,11 +133,15 @@ export default function HomeScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = (productId: number, delta: number) => {
     feelTap();
     setLastOrder(null);
+    setAppliedDiscount(null);
+    setCheckoutError('');
     setCart((current) => {
       const nextQuantity = (current[productId] ?? 0) + delta;
+      const product = products.find((item) => item.id === productId);
+      if (delta > 0 && (!product || nextQuantity > product.stock)) return current;
       const next = { ...current };
       if (nextQuantity <= 0) delete next[productId];
       else next[productId] = nextQuantity;
@@ -187,7 +149,22 @@ export default function HomeScreen() {
     });
   };
 
-  const placeOrder = () => {
+  const applyDiscount = async () => {
+    const code = discountCode.trim();
+    if (!code || subtotal <= 0) return;
+    try {
+      const result = await previewDiscountMutation.mutateAsync({
+        data: { code, subtotal },
+      });
+      setAppliedDiscount({ code: result.code, amount: result.discountAmount });
+      setCheckoutError('');
+    } catch {
+      setAppliedDiscount(null);
+      setCheckoutError('ডিসকাউন্ট কোডটি যাচাই করা যায়নি');
+    }
+  };
+
+  const placeOrder = async () => {
     Keyboard.dismiss();
     const nextErrors: CheckoutErrors = {};
     if (!customerName.trim()) nextErrors.name = 'আপনার নাম লিখুন';
@@ -199,16 +176,39 @@ export default function HomeScreen() {
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0 || cartLines.length === 0) return;
 
-    setLastOrder({
-      reference: `HM${Date.now().toString().slice(-6)}`,
-      customerName: customerName.trim(),
-      phone: phone.trim(),
-      address: address.trim(),
-      items: cartLines,
-      total,
-    });
-    setCart({});
-    setErrors({});
+    if (!selectedDelivery) {
+      setCheckoutError('ডেলিভারি এলাকা এখনো প্রস্তুত নয়');
+      return;
+    }
+    setCheckoutError('');
+    try {
+      const receipt = await createOrderMutation.mutateAsync({
+        data: {
+          customerName: customerName.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          deliveryOptionId: selectedDelivery.id,
+          paymentMethod: 'cod',
+          ...(appliedDiscount ? { discountCode: appliedDiscount.code } : {}),
+          items: cartLines.map((item) => ({ productId: item.id, quantity: item.quantity })),
+        },
+      });
+      setLastOrder({
+        reference: receipt.reference,
+        customerName: customerName.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        items: cartLines,
+        total: receipt.total,
+      });
+      setCart({});
+      setDiscountCode('');
+      setAppliedDiscount(null);
+      setErrors({});
+      await queryClient.invalidateQueries();
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'অর্ডারটি নেওয়া যায়নি');
+    }
   };
 
   const goHome = () => {
@@ -364,7 +364,7 @@ export default function HomeScreen() {
               contentContainerStyle={styles.categoryRow}
               keyboardShouldPersistTaps="handled"
             >
-              {categories.map((category) => {
+              {categoryOptions.map((category) => {
                 const selected = selectedCategory === category.id;
                 return (
                   <Pressable
@@ -405,7 +405,7 @@ export default function HomeScreen() {
                 <Text style={styles.sectionTitle}>
                   {selectedCategory === 'all'
                     ? 'আজকের বাজার'
-                    : categories.find((category) => category.id === selectedCategory)?.label}
+                    : categoryOptions.find((category) => category.id === selectedCategory)?.label}
                 </Text>
                 <Text style={styles.sectionHint}>
                   {toBanglaDigits(filteredProducts.length)}টি পণ্য পাওয়া গেছে
@@ -417,7 +417,19 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {filteredProducts.length > 0 ? (
+            {productsQuery.isLoading ? (
+              <View style={styles.noResults}>
+                <Text style={styles.noResultsTitle}>পণ্য লোড হচ্ছে…</Text>
+              </View>
+            ) : productsQuery.isError ? (
+              <View style={styles.noResults}>
+                <Text style={styles.noResultsTitle}>পণ্য আনা যায়নি</Text>
+                <Text style={styles.noResultsBody}>ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন</Text>
+                <Pressable onPress={() => void productsQuery.refetch()} style={styles.heroButton}>
+                  <Text style={styles.heroButtonText}>আবার চেষ্টা করুন</Text>
+                </Pressable>
+              </View>
+            ) : filteredProducts.length > 0 ? (
               <View style={styles.productGrid}>
                 {filteredProducts.map((product) => {
                   const quantity = cart[product.id] ?? 0;
@@ -428,13 +440,13 @@ export default function HomeScreen() {
                     >
                       <View style={styles.productImageWrap}>
                         <Image
-                          source={product.image}
+                          source={productImage(product)}
                           style={styles.productImage}
                           resizeMode="cover"
                           accessibilityLabel={product.name}
                         />
                         <View style={styles.productNote}>
-                          <Text style={styles.productNoteText}>{product.note}</Text>
+                          <Text style={styles.productNoteText}>{product.description}</Text>
                         </View>
                       </View>
                       <View style={styles.productDetails}>
@@ -450,8 +462,10 @@ export default function HomeScreen() {
                               accessibilityLabel={`${product.name} কার্টে যোগ করুন`}
                               testID={`add-${product.id}`}
                               onPress={() => updateQuantity(product.id, 1)}
+                              disabled={product.stock <= 0}
                               style={({ pressed }) => [
                                 styles.addButton,
+                                product.stock <= 0 && { opacity: 0.45 },
                                 pressed && styles.pressed,
                               ]}
                             >
@@ -478,6 +492,7 @@ export default function HomeScreen() {
                                 testID={`increase-${product.id}`}
                                 hitSlop={8}
                                 onPress={() => updateQuantity(product.id, 1)}
+                                disabled={quantity >= product.stock}
                                 style={styles.quantityButton}
                               >
                                 <Feather name="plus" size={14} color={colors.primary} />
@@ -611,7 +626,7 @@ export default function HomeScreen() {
                       {cartLines.map((item) => (
                         <View key={item.id} style={styles.cartItem}>
                           <Image
-                            source={item.image}
+                            source={productImage(item)}
                             style={styles.cartItemImage}
                             resizeMode="cover"
                             accessibilityLabel={item.name}
@@ -643,6 +658,7 @@ export default function HomeScreen() {
                               testID={`cart-increase-${item.id}`}
                               hitSlop={8}
                               onPress={() => updateQuantity(item.id, 1)}
+                              disabled={item.quantity >= item.stock}
                               style={styles.quantityButton}
                             >
                               <Feather name="plus" size={14} color={colors.primary} />
@@ -662,6 +678,14 @@ export default function HomeScreen() {
                         <Text style={styles.summaryLabel}>ডেলিভারি চার্জ</Text>
                         <Text style={styles.summaryValue}>{taka(deliveryCharge)}</Text>
                       </View>
+                      {discountAmount > 0 && (
+                        <View style={styles.summaryRow}>
+                          <Text style={styles.summaryLabel}>ছাড়</Text>
+                          <Text style={[styles.summaryValue, { color: colors.primary }]}>
+                            −{taka(discountAmount)}
+                          </Text>
+                        </View>
+                      )}
                       <View style={styles.summaryDivider} />
                       <View style={styles.summaryRow}>
                         <Text style={styles.summaryTotalLabel}>সর্বমোট</Text>
@@ -731,34 +755,124 @@ export default function HomeScreen() {
                         <Text style={styles.errorText}>{errors.address}</Text>
                       )}
 
-                      <View style={styles.paymentCard}>
-                        <View style={styles.paymentIcon}>
-                          <Feather name="truck" size={18} color={colors.primary} />
-                        </View>
-                        <View style={styles.paymentCopy}>
-                          <Text style={styles.paymentTitle}>Cash on Delivery</Text>
-                          <Text style={styles.paymentSubtitle}>পণ্য হাতে পেয়ে টাকা দিন</Text>
-                        </View>
-                        <View style={styles.radioOuter}>
-                          <View style={styles.radioInner} />
-                        </View>
-                      </View>
+                      <Text style={styles.fieldLabel}>ডেলিভারি এলাকা</Text>
+                      {deliveryOptions.map((option) => (
+                        <Pressable
+                          key={option.id}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: deliveryOptionId === option.id }}
+                          onPress={() => setDeliveryOptionId(option.id)}
+                          style={[
+                            styles.paymentCard,
+                            deliveryOptionId === option.id && { borderColor: colors.primary },
+                          ]}
+                        >
+                          <View style={styles.paymentIcon}>
+                            <Feather name="map-pin" size={17} color={colors.primary} />
+                          </View>
+                          <View style={styles.paymentCopy}>
+                            <Text style={styles.paymentTitle}>{option.label}</Text>
+                            <Text style={styles.paymentSubtitle}>ডেলিভারি চার্জ {taka(option.fee)}</Text>
+                          </View>
+                          <View style={styles.radioOuter}>
+                            {deliveryOptionId === option.id && <View style={styles.radioInner} />}
+                          </View>
+                        </Pressable>
+                      ))}
+                      {settingsQuery.isError && (
+                        <Text style={styles.errorText}>ডেলিভারি তথ্য লোড করা যায়নি</Text>
+                      )}
+
+                      <Text style={styles.fieldLabel}>ছাড়ের কোড</Text>
+                      <TextInput
+                        accessibilityLabel="ছাড়ের কোড"
+                        value={discountCode}
+                        onChangeText={(value) => {
+                          setDiscountCode(value.toUpperCase());
+                          setAppliedDiscount(null);
+                        }}
+                        placeholder="যদি থাকে"
+                        placeholderTextColor={colors.mutedForeground}
+                        autoCapitalize="characters"
+                        style={styles.formInput}
+                      />
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => void applyDiscount()}
+                        disabled={!discountCode.trim() || previewDiscountMutation.isPending}
+                        style={({ pressed }) => [
+                          styles.secondaryAction,
+                          (!discountCode.trim() || previewDiscountMutation.isPending) && { opacity: 0.5 },
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <Text style={styles.secondaryActionText}>
+                          {previewDiscountMutation.isPending ? 'যাচাই হচ্ছে…' : 'ছাড়ের কোড যাচাই করুন'}
+                        </Text>
+                      </Pressable>
+                      {appliedDiscount && (
+                        <Text style={[styles.checkoutHint, { color: colors.primary }]}>
+                          {appliedDiscount.code} প্রয়োগ হয়েছে · {taka(appliedDiscount.amount)} ছাড়
+                        </Text>
+                      )}
+
+                      <Text style={styles.fieldLabel}>পেমেন্ট পদ্ধতি</Text>
+                      {paymentMethods.map((method) => (
+                        <Pressable
+                          key={method.code}
+                          accessibilityRole="radio"
+                          accessibilityState={{
+                            selected: paymentMethod === method.code,
+                            disabled: !method.enabled,
+                          }}
+                          disabled={!method.enabled}
+                          onPress={() => setPaymentMethod(method.code)}
+                          style={[
+                            styles.paymentCard,
+                            paymentMethod === method.code && { borderColor: colors.primary },
+                            !method.enabled && { opacity: 0.56 },
+                          ]}
+                        >
+                          <View style={styles.paymentIcon}>
+                            <Feather
+                              name={(method.code === 'cod' ? 'truck' : 'credit-card') as React.ComponentProps<typeof Feather>['name']}
+                              size={17}
+                              color={colors.primary}
+                            />
+                          </View>
+                          <View style={styles.paymentCopy}>
+                            <Text style={styles.paymentTitle}>{method.label}</Text>
+                            <Text style={styles.paymentSubtitle}>{method.availabilityNote}</Text>
+                          </View>
+                          <View style={styles.radioOuter}>
+                            {paymentMethod === method.code && <View style={styles.radioInner} />}
+                          </View>
+                        </Pressable>
+                      ))}
+                      <Text style={styles.checkoutHint}>
+                        অনলাইন পেমেন্ট চালু হলে সার্ভার যাচাই ছাড়া কোনো পেমেন্ট সম্পন্ন দেখানো হবে না।
+                      </Text>
+                      {checkoutError ? <Text style={styles.errorText}>{checkoutError}</Text> : null}
 
                       <Pressable
                         accessibilityRole="button"
                         testID="place-order-button"
-                        onPress={placeOrder}
+                        onPress={() => void placeOrder()}
+                        disabled={createOrderMutation.isPending || itemCount === 0}
                         style={({ pressed }) => [
                           styles.primaryButton,
                           styles.placeOrderButton,
+                          (createOrderMutation.isPending || itemCount === 0) && { opacity: 0.6 },
                           pressed && styles.pressed,
                         ]}
                       >
-                        <Text style={styles.primaryButtonText}>অর্ডার নিশ্চিত করুন</Text>
+                        <Text style={styles.primaryButtonText}>
+                          {createOrderMutation.isPending ? 'অর্ডার পাঠানো হচ্ছে…' : 'অর্ডার নিশ্চিত করুন'}
+                        </Text>
                         <Feather name="arrow-right" size={17} color={colors.primaryForeground} />
                       </Pressable>
                       <Text style={styles.secureNote}>
-                        অর্ডার নিশ্চিত করতে কোনো অগ্রিম পেমেন্ট লাগবে না
+                        অর্ডার নিশ্চিত করতে অগ্রিম পেমেন্ট লাগবে না
                       </Text>
                     </View>
                   </>
@@ -1212,6 +1326,16 @@ function makeStyles(
     },
     checkoutHint: { color: colors.mutedForeground, fontSize: 12, marginTop: 4, marginBottom: 16 },
     fieldLabel: { color: colors.foreground, fontSize: 13, fontWeight: '600', marginBottom: 7, marginTop: 13 },
+    secondaryAction: {
+      alignSelf: 'flex-start',
+      marginTop: 8,
+      marginBottom: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      borderRadius: 10,
+      backgroundColor: colors.accent,
+    },
+    secondaryActionText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
     formInput: {
       minHeight: 48,
       paddingHorizontal: 13,
