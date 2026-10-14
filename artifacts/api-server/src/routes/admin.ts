@@ -7,9 +7,11 @@ import {
   categories,
   db,
   discounts,
+  merchantMembers,
   orderItems,
   orders,
   products,
+  shops,
   storeSettings,
   type DeliveryOption,
 } from "@workspace/db";
@@ -44,6 +46,7 @@ const productFields = {
   price: z.number().finite().min(0).max(10_000_000),
   stock: z.number().int().min(0).max(1_000_000),
   categoryId: z.number().int().positive().nullable(),
+  shopId: z.number().int().positive(),
   imageUrl: imageUrlSchema,
   isVisible: z.boolean(),
 };
@@ -114,11 +117,33 @@ const settingsPatchSchema = z
       }
     }
   });
+const shopDeliveryOptionsSchema = z.array(deliveryOptionSchema).max(10).superRefine((options, ctx) => {
+  const ids = options.map((option) => option.id);
+  if (new Set(ids).size !== ids.length) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ডেলিভারি এলাকার আইডি আলাদা হতে হবে" });
+  }
+  if (!options.some((option) => option.active)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "অন্তত একটি ডেলিভারি এলাকা চালু রাখুন" });
+  }
+});
+const shopFields = {
+  slug: slugSchema.max(80),
+  name: z.string().trim().min(2).max(100),
+  description: z.string().trim().max(500),
+  deliveryCharge: z.number().finite().min(0).max(100_000),
+  minimumOrder: z.number().finite().min(0).max(10_000_000),
+  deliveryOptions: shopDeliveryOptionsSchema,
+  isActive: z.boolean(),
+};
+const shopInputSchema = z.object(shopFields).strict();
+const shopPatchSchema = shopInputSchema.partial().strict().refine((value) => Object.keys(value).length > 0);
+const merchantEmailSchema = z.string().trim().email().max(254).transform((value) => value.toLowerCase());
 
 function productResult(
   row: typeof products.$inferSelect,
   categoryName: string | null,
   categorySlug: string | null,
+  shop: typeof shops.$inferSelect | null,
 ) {
   return {
     id: row.id,
@@ -133,6 +158,75 @@ function productResult(
     categorySlug,
     imageUrl: row.imageUrl,
     isVisible: row.isVisible,
+    shop: shop
+      ? {
+          id: shop.id,
+          slug: shop.slug,
+          name: shop.name,
+          description: shop.description,
+          deliveryCharge: Number(shop.deliveryCharge),
+          minimumOrder: Number(shop.minimumOrder),
+          deliveryOptions: shop.deliveryOptions.filter((option) => option.active),
+        }
+      : null,
+  };
+}
+
+function shopResult(shop: typeof shops.$inferSelect, members: typeof merchantMembers.$inferSelect[]) {
+  return {
+    id: shop.id,
+    slug: shop.slug,
+    name: shop.name,
+    description: shop.description,
+    deliveryCharge: Number(shop.deliveryCharge),
+    minimumOrder: Number(shop.minimumOrder),
+    deliveryOptions: shop.deliveryOptions,
+    isActive: shop.isActive,
+    members: members.map((member) => ({ id: member.id, email: member.email, isActive: member.isActive })),
+  };
+}
+
+async function getShopMembers(shopId: number) {
+  return db.select().from(merchantMembers).where(eq(merchantMembers.shopId, shopId)).orderBy(asc(merchantMembers.email));
+}
+
+async function validateShop(shopId: number | null | undefined) {
+  if (shopId === undefined || shopId === null) return;
+  const [shop] = await db.select().from(shops).where(and(eq(shops.id, shopId), eq(shops.isActive, true))).limit(1);
+  if (!shop) throw new ApiError(400, "সক্রিয় দোকানটি পাওয়া যায়নি");
+}
+
+function adminOrderResult(
+  order: typeof orders.$inferSelect,
+  shopName: string | null,
+  items: Array<typeof orderItems.$inferSelect>,
+) {
+  return {
+    id: order.id,
+    reference: order.reference,
+    shopId: order.shopId,
+    shopName,
+    customerName: order.customerName,
+    phone: order.phone,
+    address: order.address,
+    deliveryOption: order.deliveryOption,
+    deliveryFee: Number(order.deliveryFee),
+    subtotal: Number(order.subtotal),
+    discountAmount: Number(order.discountAmount),
+    total: Number(order.total),
+    discountCode: order.discountCode,
+    paymentMethod: order.paymentMethod,
+    paymentStatus: order.paymentStatus,
+    status: order.status,
+    createdAt: order.createdAt.toISOString(),
+    items: items.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      unit: item.unit,
+      unitPrice: Number(item.unitPrice),
+      quantity: item.quantity,
+      lineTotal: Number(item.lineTotal),
+    })),
   };
 }
 
@@ -206,6 +300,106 @@ router.get(
 router.use("/admin", requireAdmin);
 
 router.get(
+  "/admin/shops",
+  asyncHandler(async (_req, res) => {
+    const allShops = await db.select().from(shops).orderBy(asc(shops.name));
+    const members = allShops.length
+      ? await db.select().from(merchantMembers).where(inArray(merchantMembers.shopId, allShops.map((shop) => shop.id)))
+      : [];
+    const membersByShop = new Map<number, typeof members>();
+    for (const member of members) {
+      const current = membersByShop.get(member.shopId) ?? [];
+      current.push(member);
+      membersByShop.set(member.shopId, current);
+    }
+    res.json({
+      shops: allShops.map((shop) => shopResult(shop, membersByShop.get(shop.id) ?? [])),
+    });
+  }),
+);
+
+router.post(
+  "/admin/shops",
+  asyncHandler(async (req, res) => {
+    const parsed = shopInputSchema.safeParse(req.body);
+    if (!parsed.success) throw new ApiError(400, "দোকানের তথ্য সঠিক নয়");
+    const [existing] = await db.select({ id: shops.id }).from(shops).where(eq(shops.slug, parsed.data.slug)).limit(1);
+    if (existing) throw new ApiError(409, "এই দোকানের ঠিকানা আগে থেকেই ব্যবহৃত");
+    const [saved] = await db
+      .insert(shops)
+      .values({
+        ...parsed.data,
+        deliveryCharge: String(parsed.data.deliveryCharge),
+        minimumOrder: String(parsed.data.minimumOrder),
+        updatedAt: new Date(),
+      })
+      .returning();
+    res.status(201).json(shopResult(saved, []));
+  }),
+);
+
+router.patch(
+  "/admin/shops/:shopId",
+  asyncHandler(async (req, res) => {
+    const shopId = z.coerce.number().int().positive().safeParse(req.params.shopId);
+    const parsed = shopPatchSchema.safeParse(req.body);
+    if (!shopId.success || !parsed.success) throw new ApiError(400, "দোকানের তথ্য সঠিক নয়");
+    const [current] = await db.select().from(shops).where(eq(shops.id, shopId.data)).limit(1);
+    if (!current) throw new ApiError(404, "দোকানটি পাওয়া যায়নি");
+    if (parsed.data.slug && parsed.data.slug !== current.slug) {
+      const [existing] = await db.select({ id: shops.id }).from(shops).where(eq(shops.slug, parsed.data.slug)).limit(1);
+      if (existing) throw new ApiError(409, "এই দোকানের ঠিকানা আগে থেকেই ব্যবহৃত");
+    }
+    const update: Partial<typeof shops.$inferInsert> = { updatedAt: new Date() };
+    if (parsed.data.slug !== undefined) update.slug = parsed.data.slug;
+    if (parsed.data.name !== undefined) update.name = parsed.data.name;
+    if (parsed.data.description !== undefined) update.description = parsed.data.description;
+    if (parsed.data.deliveryCharge !== undefined) update.deliveryCharge = String(parsed.data.deliveryCharge);
+    if (parsed.data.minimumOrder !== undefined) update.minimumOrder = String(parsed.data.minimumOrder);
+    if (parsed.data.deliveryOptions !== undefined) update.deliveryOptions = parsed.data.deliveryOptions;
+    if (parsed.data.isActive !== undefined) update.isActive = parsed.data.isActive;
+    const [saved] = await db.update(shops).set(update).where(eq(shops.id, shopId.data)).returning();
+    res.json(shopResult(saved, await getShopMembers(shopId.data)));
+  }),
+);
+
+router.post(
+  "/admin/shops/:shopId/members",
+  asyncHandler(async (req, res) => {
+    const shopId = z.coerce.number().int().positive().safeParse(req.params.shopId);
+    const body = z.object({ email: merchantEmailSchema }).strict().safeParse(req.body);
+    if (!shopId.success || !body.success) throw new ApiError(400, "মার্চেন্টের ইমেইল সঠিক নয়");
+    const [shop] = await db.select({ id: shops.id }).from(shops).where(eq(shops.id, shopId.data)).limit(1);
+    if (!shop) throw new ApiError(404, "দোকানটি পাওয়া যায়নি");
+    const [member] = await db
+      .insert(merchantMembers)
+      .values({ shopId: shopId.data, email: body.data.email, isActive: true })
+      .onConflictDoUpdate({
+        target: [merchantMembers.shopId, merchantMembers.email],
+        set: { isActive: true, updatedAt: new Date() },
+      })
+      .returning();
+    res.status(201).json({ id: member.id, email: member.email, isActive: member.isActive });
+  }),
+);
+
+router.delete(
+  "/admin/shops/:shopId/members/:memberId",
+  asyncHandler(async (req, res) => {
+    const shopId = z.coerce.number().int().positive().safeParse(req.params.shopId);
+    const memberId = z.coerce.number().int().positive().safeParse(req.params.memberId);
+    if (!shopId.success || !memberId.success) throw new ApiError(400, "মার্চেন্টের আইডি সঠিক নয়");
+    const [member] = await db
+      .update(merchantMembers)
+      .set({ isActive: false, clerkUserId: null, updatedAt: new Date() })
+      .where(and(eq(merchantMembers.id, memberId.data), eq(merchantMembers.shopId, shopId.data)))
+      .returning({ id: merchantMembers.id });
+    if (!member) throw new ApiError(404, "মার্চেন্ট অনুমতি পাওয়া যায়নি");
+    res.status(204).end();
+  }),
+);
+
+router.get(
   "/admin/summary",
   asyncHandler(async (_req, res) => {
     const startOfDay = bangladeshStartOfDay();
@@ -240,11 +434,14 @@ router.get(
   "/admin/products",
   asyncHandler(async (_req, res) => {
     const rows = await db
-      .select({ product: products, categoryName: categories.name, categorySlug: categories.slug })
+      .select({ product: products, categoryName: categories.name, categorySlug: categories.slug, shop: shops })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(shops, eq(products.shopId, shops.id))
       .orderBy(asc(products.id));
-    res.json({ products: rows.map((row) => productResult(row.product, row.categoryName, row.categorySlug)) });
+    res.json({
+      products: rows.map((row) => productResult(row.product, row.categoryName, row.categorySlug, row.shop)),
+    });
   }),
 );
 
@@ -254,6 +451,7 @@ router.post(
     const parsed = productInput.safeParse(req.body);
     if (!parsed.success) throw new ApiError(400, "পণ্যের তথ্য সঠিক নয়");
     await validateCategory(parsed.data.categoryId);
+    await validateShop(parsed.data.shopId);
     const [saved] = await db
       .insert(products)
       .values({
@@ -265,7 +463,8 @@ router.post(
     const [category] = saved.categoryId
       ? await db.select().from(categories).where(eq(categories.id, saved.categoryId)).limit(1)
       : [];
-    res.status(201).json(productResult(saved, category?.name ?? null, category?.slug ?? null));
+    const [shop] = saved.shopId ? await db.select().from(shops).where(eq(shops.id, saved.shopId)).limit(1) : [];
+    res.status(201).json(productResult(saved, category?.name ?? null, category?.slug ?? null, shop ?? null));
   }),
 );
 
@@ -276,6 +475,7 @@ router.patch(
     const parsed = productPatch.safeParse(req.body);
     if (!id.success || !parsed.success) throw new ApiError(400, "পণ্যের তথ্য সঠিক নয়");
     await validateCategory(parsed.data.categoryId);
+    await validateShop(parsed.data.shopId);
     const updates: Partial<typeof products.$inferInsert> = { updatedAt: new Date() };
     if (parsed.data.slug !== undefined) updates.slug = parsed.data.slug;
     if (parsed.data.name !== undefined) updates.name = parsed.data.name;
@@ -284,6 +484,7 @@ router.patch(
     if (parsed.data.price !== undefined) updates.price = String(parsed.data.price);
     if (parsed.data.stock !== undefined) updates.stock = parsed.data.stock;
     if (parsed.data.categoryId !== undefined) updates.categoryId = parsed.data.categoryId;
+    if (parsed.data.shopId !== undefined) updates.shopId = parsed.data.shopId;
     if (parsed.data.imageUrl !== undefined) updates.imageUrl = parsed.data.imageUrl;
     if (parsed.data.isVisible !== undefined) updates.isVisible = parsed.data.isVisible;
     const [saved] = await db.update(products).set(updates).where(eq(products.id, id.data)).returning();
@@ -291,7 +492,8 @@ router.patch(
     const [category] = saved.categoryId
       ? await db.select().from(categories).where(eq(categories.id, saved.categoryId)).limit(1)
       : [];
-    res.json(productResult(saved, category?.name ?? null, category?.slug ?? null));
+    const [shop] = saved.shopId ? await db.select().from(shops).where(eq(shops.id, saved.shopId)).limit(1) : [];
+    res.json(productResult(saved, category?.name ?? null, category?.slug ?? null, shop ?? null));
   }),
 );
 
@@ -369,12 +571,13 @@ router.get(
       conditions.push(or(ilike(orders.reference, like), ilike(orders.customerName, like), ilike(orders.phone, like))!);
     }
     const resultRows = await db
-      .select()
+      .select({ order: orders, shopName: shops.name })
       .from(orders)
+      .leftJoin(shops, eq(orders.shopId, shops.id))
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(orders.createdAt))
       .limit(100);
-    const ids = resultRows.map((order) => order.id);
+    const ids = resultRows.map((row) => row.order.id);
     const itemRows = ids.length
       ? await db.select().from(orderItems).where(inArray(orderItems.orderId, ids))
       : [];
@@ -385,31 +588,9 @@ router.get(
       itemsByOrder.set(item.orderId, current);
     }
     res.json({
-      orders: resultRows.map((order) => ({
-        id: order.id,
-        reference: order.reference,
-        customerName: order.customerName,
-        phone: order.phone,
-        address: order.address,
-        deliveryOption: order.deliveryOption,
-        deliveryFee: Number(order.deliveryFee),
-        subtotal: Number(order.subtotal),
-        discountAmount: Number(order.discountAmount),
-        total: Number(order.total),
-        discountCode: order.discountCode,
-        paymentMethod: order.paymentMethod,
-        paymentStatus: order.paymentStatus,
-        status: order.status,
-        createdAt: order.createdAt.toISOString(),
-        items: (itemsByOrder.get(order.id) ?? []).map((item) => ({
-          productId: item.productId,
-          productName: item.productName,
-          unit: item.unit,
-          unitPrice: Number(item.unitPrice),
-          quantity: item.quantity,
-          lineTotal: Number(item.lineTotal),
-        })),
-      })),
+      orders: resultRows.map(({ order, shopName }) =>
+        adminOrderResult(order, shopName, itemsByOrder.get(order.id) ?? []),
+      ),
     });
   }),
 );
@@ -444,7 +625,15 @@ router.patch(
         .where(eq(orders.id, order.id));
     });
 
-    res.json({ updated: true, id: id.data, status: body.data.status });
+    const [saved] = await db
+      .select({ order: orders, shopName: shops.name })
+      .from(orders)
+      .leftJoin(shops, eq(orders.shopId, shops.id))
+      .where(eq(orders.id, id.data))
+      .limit(1);
+    if (!saved) throw new ApiError(404, "অর্ডারটি পাওয়া যায়নি");
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id.data));
+    res.json(adminOrderResult(saved.order, saved.shopName, items));
   }),
 );
 

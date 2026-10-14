@@ -11,6 +11,7 @@ import type { PaymentStatus } from './paymentStatus';
 
 export interface OrderReceipt {
   reference: string;
+  shopName: string;
   subtotal: number;
   deliveryFee: number;
   discountAmount: number;

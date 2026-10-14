@@ -13,6 +13,8 @@ import type { PaymentStatus } from './paymentStatus';
 export interface AdminOrder {
   id: number;
   reference: string;
+  shopId: number | null;
+  shopName: string | null;
   customerName: string;
   phone: string;
   address: string;

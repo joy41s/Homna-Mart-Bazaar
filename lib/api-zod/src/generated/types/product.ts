@@ -5,6 +5,7 @@
  * Homna Mart customer and protected administration API
  * OpenAPI spec version: 0.2.0
  */
+import type { ShopSummary } from './shopSummary';
 
 export interface Product {
   id: number;
@@ -18,5 +19,6 @@ export interface Product {
   categoryName: string | null;
   categorySlug: string | null;
   imageUrl: string | null;
+  shop: ShopSummary | null;
   isVisible: boolean;
 }

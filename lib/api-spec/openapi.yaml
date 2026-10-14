@@ -12,6 +12,7 @@ tags:
   - name: catalog
   - name: checkout
   - name: admin
+  - name: merchant
 security:
   - ClerkSession: []
 paths:
@@ -46,6 +47,25 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Product"
+  /shops:
+    get:
+      operationId: listShops
+      tags: [catalog]
+      summary: List active independent shops
+      security: []
+      responses:
+        "200":
+          description: Active shops and delivery settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [shops]
+                properties:
+                  shops:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShopSummary"
   /categories:
     get:
       operationId: listCategories
@@ -169,6 +189,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /my/orders:
+    get:
+      operationId: getMyOrders
+      tags: [checkout]
+      summary: List orders placed by the signed-in customer
+      responses:
+        "200":
+          description: The caller's order history only
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orders]
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CustomerOrder"
   /admin/me:
     get:
       operationId: getAdminIdentity
@@ -187,6 +225,97 @@ paths:
                     type: boolean
                   email:
                     type: string
+  /admin/shops:
+    get:
+      operationId: adminListShops
+      tags: [admin]
+      summary: List shops and merchant access
+      responses:
+        "200":
+          description: Shops managed by the platform
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [shops]
+                properties:
+                  shops:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminShop"
+    post:
+      operationId: adminCreateShop
+      tags: [admin]
+      summary: Create an independent shop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShopInput"
+      responses:
+        "201":
+          description: Created shop
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminShop"
+  /admin/shops/{shopId}:
+    patch:
+      operationId: adminUpdateShop
+      tags: [admin]
+      summary: Update shop details or suspend the shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShopPatch"
+      responses:
+        "200":
+          description: Updated shop
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminShop"
+  /admin/shops/{shopId}/members:
+    post:
+      operationId: adminAddShopMember
+      tags: [admin]
+      summary: Grant verified email access to a shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "201":
+          description: Merchant access granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopMember"
+  /admin/shops/{shopId}/members/{memberId}:
+    delete:
+      operationId: adminRemoveShopMember
+      tags: [admin]
+      summary: Revoke a merchant's access to this shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+        - $ref: "#/components/parameters/MemberId"
+      responses:
+        "204":
+          description: Merchant access revoked
   /admin/summary:
     get:
       operationId: getAdminSummary
@@ -516,6 +645,208 @@ paths:
       responses:
         "204":
           description: Discount deleted
+  /merchant/shops:
+    get:
+      operationId: merchantListShops
+      tags: [merchant]
+      summary: List shops assigned to the verified merchant account
+      responses:
+        "200":
+          description: Authorized merchant shops
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [shops]
+                properties:
+                  shops:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShopSummary"
+  /merchant/shops/{shopId}/summary:
+    get:
+      operationId: merchantGetSummary
+      tags: [merchant]
+      summary: Read shop sales and inventory summary
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+      responses:
+        "200":
+          description: Current shop totals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSummary"
+  /merchant/shops/{shopId}/products:
+    get:
+      operationId: merchantListProducts
+      tags: [merchant]
+      summary: List products owned by the selected shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+      responses:
+        "200":
+          description: Shop products
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products]
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+    post:
+      operationId: merchantCreateProduct
+      tags: [merchant]
+      summary: Add a product to the selected shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MerchantProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /merchant/shops/{shopId}/products/{id}:
+    patch:
+      operationId: merchantUpdateProduct
+      tags: [merchant]
+      summary: Update a product belonging to the selected shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MerchantProductPatch"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: merchantDeleteProduct
+      tags: [merchant]
+      summary: Delete a product belonging to the selected shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Product deleted
+  /merchant/shops/{shopId}/orders:
+    get:
+      operationId: merchantListOrders
+      tags: [merchant]
+      summary: Search orders for the selected shop only
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: Orders for this shop
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orders]
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminOrder"
+  /merchant/shops/{shopId}/orders/{id}:
+    patch:
+      operationId: merchantUpdateOrderStatus
+      tags: [merchant]
+      summary: Update status for an order belonging to the selected shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusPatch"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrder"
+  /merchant/shops/{shopId}/orders/{id}/cod-payment:
+    patch:
+      operationId: merchantConfirmCodPayment
+      tags: [merchant]
+      summary: Record cash received for a COD order in this shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: COD cash recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CodPaymentReceipt"
+  /merchant/shops/{shopId}/settings:
+    get:
+      operationId: merchantGetShopSettings
+      tags: [merchant]
+      summary: Read delivery settings for this shop
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+      responses:
+        "200":
+          description: Shop settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopSettings"
+    patch:
+      operationId: merchantUpdateShopSettings
+      tags: [merchant]
+      summary: Change the selected shop's delivery settings
+      parameters:
+        - $ref: "#/components/parameters/ShopId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShopSettingsPatch"
+      responses:
+        "200":
+          description: Updated shop settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopSettings"
 components:
   securitySchemes:
     ClerkSession:
@@ -525,6 +856,20 @@ components:
   parameters:
     Id:
       name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    ShopId:
+      name: shopId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    MemberId:
+      name: memberId
       in: path
       required: true
       schema:
@@ -545,7 +890,7 @@ components:
           type: string
     Product:
       type: object
-      required: [id, slug, name, description, unit, price, stock, categoryId, categoryName, categorySlug, imageUrl, isVisible]
+      required: [id, slug, name, description, unit, price, stock, categoryId, categoryName, categorySlug, imageUrl, isVisible, shop]
       properties:
         id:
           type: integer
@@ -573,8 +918,173 @@ components:
         imageUrl:
           type: string
           nullable: true
+        shop:
+          $ref: "#/components/schemas/ShopSummary"
+          nullable: true
         isVisible:
           type: boolean
+    ShopSummary:
+      type: object
+      required: [id, slug, name, description, deliveryCharge, minimumOrder, deliveryOptions]
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        deliveryCharge:
+          type: number
+        minimumOrder:
+          type: number
+        deliveryOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliveryOption"
+    AdminShop:
+      type: object
+      required: [id, slug, name, description, deliveryCharge, minimumOrder, deliveryOptions, isActive, members]
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        deliveryCharge:
+          type: number
+        minimumOrder:
+          type: number
+        deliveryOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliveryOption"
+        isActive:
+          type: boolean
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopMember"
+    ShopMember:
+      type: object
+      required: [id, email, isActive]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        isActive:
+          type: boolean
+    ShopInput:
+      type: object
+      required: [slug, name, description, deliveryCharge, minimumOrder, deliveryOptions, isActive]
+      properties:
+        slug:
+          type: string
+          minLength: 2
+          maxLength: 80
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        deliveryCharge:
+          type: number
+          minimum: 0
+          maximum: 100000
+        minimumOrder:
+          type: number
+          minimum: 0
+          maximum: 10000000
+        deliveryOptions:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/DeliveryOption"
+        isActive:
+          type: boolean
+    ShopPatch:
+      type: object
+      minProperties: 1
+      properties:
+        slug:
+          type: string
+          minLength: 2
+          maxLength: 80
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        deliveryCharge:
+          type: number
+          minimum: 0
+          maximum: 100000
+        minimumOrder:
+          type: number
+          minimum: 0
+          maximum: 10000000
+        deliveryOptions:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/DeliveryOption"
+        isActive:
+          type: boolean
+    ShopSettings:
+      type: object
+      required: [id, slug, name, description, deliveryCharge, minimumOrder, deliveryOptions]
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        deliveryCharge:
+          type: number
+        minimumOrder:
+          type: number
+        deliveryOptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeliveryOption"
+    ShopSettingsPatch:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        deliveryCharge:
+          type: number
+          minimum: 0
+          maximum: 100000
+        minimumOrder:
+          type: number
+          minimum: 0
+          maximum: 10000000
+        deliveryOptions:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/DeliveryOption"
     Category:
       type: object
       required: [id, slug, name, isActive, sortOrder]
@@ -679,9 +1189,11 @@ components:
                 maximum: 100
     OrderReceipt:
       type: object
-      required: [reference, subtotal, deliveryFee, discountAmount, total, paymentMethod, paymentStatus, orderStatus]
+      required: [reference, shopName, subtotal, deliveryFee, discountAmount, total, paymentMethod, paymentStatus, orderStatus]
       properties:
         reference:
+          type: string
+        shopName:
           type: string
         subtotal:
           type: number
@@ -697,7 +1209,124 @@ components:
           $ref: "#/components/schemas/PaymentStatus"
         orderStatus:
           $ref: "#/components/schemas/OrderStatus"
+    CustomerOrder:
+      type: object
+      required: [id, reference, shopName, total, paymentMethod, paymentStatus, status, createdAt, items]
+      properties:
+        id:
+          type: integer
+        reference:
+          type: string
+        shopName:
+          type: string
+        total:
+          type: number
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethodCode"
+        paymentStatus:
+          $ref: "#/components/schemas/PaymentStatus"
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        createdAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+    OrderStatusPatch:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+    CodPaymentReceipt:
+      type: object
+      required: [paymentStatus]
+      properties:
+        paymentStatus:
+          $ref: "#/components/schemas/PaymentStatus"
     ProductInput:
+      type: object
+      required: [slug, name, description, unit, price, stock, categoryId, imageUrl, isVisible, shopId]
+      properties:
+        slug:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        unit:
+          type: string
+          minLength: 1
+          maxLength: 40
+        price:
+          type: number
+          minimum: 0
+          maximum: 10000000
+        stock:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+        categoryId:
+          type: integer
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+          maxLength: 1000
+        shopId:
+          type: integer
+          minimum: 1
+        isVisible:
+          type: boolean
+    ProductPatch:
+      type: object
+      minProperties: 1
+      properties:
+        slug:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+        unit:
+          type: string
+          minLength: 1
+          maxLength: 40
+        price:
+          type: number
+          minimum: 0
+          maximum: 10000000
+        stock:
+          type: integer
+          minimum: 0
+          maximum: 1000000
+        categoryId:
+          type: integer
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+          maxLength: 1000
+        shopId:
+          type: integer
+          minimum: 1
+        isVisible:
+          type: boolean
+    MerchantProductInput:
       type: object
       required: [slug, name, description, unit, price, stock, categoryId, imageUrl, isVisible]
       properties:
@@ -734,7 +1363,7 @@ components:
           maxLength: 1000
         isVisible:
           type: boolean
-    ProductPatch:
+    MerchantProductPatch:
       type: object
       minProperties: 1
       properties:
@@ -844,12 +1473,18 @@ components:
           type: number
     AdminOrder:
       type: object
-      required: [id, reference, customerName, phone, address, deliveryOption, deliveryFee, subtotal, discountAmount, total, discountCode, paymentMethod, paymentStatus, status, createdAt, items]
+      required: [id, reference, shopId, shopName, customerName, phone, address, deliveryOption, deliveryFee, subtotal, discountAmount, total, discountCode, paymentMethod, paymentStatus, status, createdAt, items]
       properties:
         id:
           type: integer
         reference:
           type: string
+        shopId:
+          type: integer
+          nullable: true
+        shopName:
+          type: string
+          nullable: true
         customerName:
           type: string
         phone:

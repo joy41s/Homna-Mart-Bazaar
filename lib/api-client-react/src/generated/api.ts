@@ -20,34 +20,52 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminAddShopMemberBody,
   AdminConfirmCodPayment200,
   AdminListCategories200,
   AdminListDiscounts200,
   AdminListOrders200,
   AdminListOrdersParams,
   AdminListProducts200,
+  AdminListShops200,
   AdminOrder,
+  AdminShop,
   AdminSummary,
   AdminUpdateOrderStatusBody,
   Category,
   CategoryInput,
   CategoryPatch,
+  CodPaymentReceipt,
   CreateOrderInput,
   Discount,
   DiscountInput,
   DiscountPatch,
   ErrorResponse,
   GetAdminIdentity200,
+  GetMyOrders200,
   HealthStatus,
   ListCategories200,
   ListPaymentMethods200,
   ListProducts200,
+  ListShops200,
+  MerchantListOrders200,
+  MerchantListOrdersParams,
+  MerchantListProducts200,
+  MerchantListShops200,
+  MerchantProductInput,
+  MerchantProductPatch,
   OrderReceipt,
+  OrderStatusPatch,
   PreviewDiscount200,
   PreviewDiscountBody,
   Product,
   ProductInput,
   ProductPatch,
+  ShopInput,
+  ShopMember,
+  ShopPatch,
+  ShopSettings,
+  ShopSettingsPatch,
   StoreSettings,
   StoreSettingsPatch
 } from './api.schemas';
@@ -221,6 +239,83 @@ export function useListProducts<TData = Awaited<ReturnType<typeof listProducts>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListProductsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListShopsUrl = () => {
+
+
+
+
+  return `/api/shops`
+}
+
+/**
+ * @summary List active independent shops
+ */
+export const listShops = async ( options?: Parameters<typeof customFetch>[1]): Promise<ListShops200> => {
+
+  return customFetch<ListShops200>(getListShopsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListShopsQueryKey = () => {
+    return [
+    `/api/shops`
+    ] as const;
+    }
+
+
+export const getListShopsQueryOptions = <TData = Awaited<ReturnType<typeof listShops>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShops>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListShopsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listShops>>> = ({ signal }) => listShops({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listShops>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListShopsQueryResult = NonNullable<Awaited<ReturnType<typeof listShops>>>
+export type ListShopsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List active independent shops
+ */
+
+export function useListShops<TData = Awaited<ReturnType<typeof listShops>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listShops>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListShopsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -641,6 +736,83 @@ export const useCreateOrder = <TError = ErrorType<ErrorResponse>,
       return useMutation(getCreateOrderMutationOptions(options));
     }
 
+export const getGetMyOrdersUrl = () => {
+
+
+
+
+  return `/api/my/orders`
+}
+
+/**
+ * @summary List orders placed by the signed-in customer
+ */
+export const getMyOrders = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetMyOrders200> => {
+
+  return customFetch<GetMyOrders200>(getGetMyOrdersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyOrdersQueryKey = () => {
+    return [
+    `/api/my/orders`
+    ] as const;
+    }
+
+
+export const getGetMyOrdersQueryOptions = <TData = Awaited<ReturnType<typeof getMyOrders>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyOrdersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyOrders>>> = ({ signal }) => getMyOrders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof getMyOrders>>>
+export type GetMyOrdersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List orders placed by the signed-in customer
+ */
+
+export function useGetMyOrders<TData = Awaited<ReturnType<typeof getMyOrders>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyOrdersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetAdminIdentityUrl = () => {
 
 
@@ -717,6 +889,425 @@ export function useGetAdminIdentity<TData = Awaited<ReturnType<typeof getAdminId
 
 
 
+
+export const getAdminListShopsUrl = () => {
+
+
+
+
+  return `/api/admin/shops`
+}
+
+/**
+ * @summary List shops and merchant access
+ */
+export const adminListShops = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminListShops200> => {
+
+  return customFetch<AdminListShops200>(getAdminListShopsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminListShopsQueryKey = () => {
+    return [
+    `/api/admin/shops`
+    ] as const;
+    }
+
+
+export const getAdminListShopsQueryOptions = <TData = Awaited<ReturnType<typeof adminListShops>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminListShops>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminListShopsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListShops>>> = ({ signal }) => adminListShops({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminListShops>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type AdminListShopsQueryResult = NonNullable<Awaited<ReturnType<typeof adminListShops>>>
+export type AdminListShopsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List shops and merchant access
+ */
+
+export function useAdminListShops<TData = Awaited<ReturnType<typeof adminListShops>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof adminListShops>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getAdminListShopsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAdminCreateShopUrl = () => {
+
+
+
+
+  return `/api/admin/shops`
+}
+
+/**
+ * @summary Create an independent shop
+ */
+export const adminCreateShop = async (shopInput: ShopInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminShop> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminShop>(getAdminCreateShopUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(shopInput)
+  }
+);}
+
+
+
+
+
+export const getAdminCreateShopMutationKey = () => ['adminCreateShop'] as const;
+
+export const getAdminCreateShopMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateShop>>, TError,AdminCreateShopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminCreateShop>>, TError,AdminCreateShopMutationVariables, TContext> => {
+
+const mutationKey = getAdminCreateShopMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminCreateShop>>, AdminCreateShopMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  adminCreateShop(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminCreateShopMutationResult = NonNullable<Awaited<ReturnType<typeof adminCreateShop>>>
+    export type AdminCreateShopMutationBody = BodyType<ShopInput>
+    export type AdminCreateShopMutationError = ErrorType<unknown>
+    export type AdminCreateShopMutationVariables = {data: BodyType<ShopInput>}
+
+    /**
+ * @summary Create an independent shop
+ */
+export const useAdminCreateShop = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminCreateShop>>, TError,AdminCreateShopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminCreateShop>>,
+        TError,
+        AdminCreateShopMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAdminCreateShopMutationOptions(options));
+    }
+
+export const getAdminUpdateShopUrl = (shopId: number,) => {
+
+
+
+
+  return `/api/admin/shops/${shopId}`
+}
+
+/**
+ * @summary Update shop details or suspend the shop
+ */
+export const adminUpdateShop = async (shopId: number,
+    shopPatch: ShopPatch, options?: Parameters<typeof customFetch>[1]): Promise<AdminShop> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminShop>(getAdminUpdateShopUrl(shopId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(shopPatch)
+  }
+);}
+
+
+
+
+
+export const getAdminUpdateShopMutationKey = () => ['adminUpdateShop'] as const;
+
+export const getAdminUpdateShopMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminUpdateShop>>, TError,AdminUpdateShopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminUpdateShop>>, TError,AdminUpdateShopMutationVariables, TContext> => {
+
+const mutationKey = getAdminUpdateShopMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminUpdateShop>>, AdminUpdateShopMutationVariables> = (props) => {
+          const {shopId,data} = props ?? {};
+
+          return  adminUpdateShop(shopId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminUpdateShopMutationResult = NonNullable<Awaited<ReturnType<typeof adminUpdateShop>>>
+    export type AdminUpdateShopMutationBody = BodyType<ShopPatch>
+    export type AdminUpdateShopMutationError = ErrorType<unknown>
+    export type AdminUpdateShopMutationVariables = {shopId: number;data: BodyType<ShopPatch>}
+
+    /**
+ * @summary Update shop details or suspend the shop
+ */
+export const useAdminUpdateShop = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminUpdateShop>>, TError,AdminUpdateShopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminUpdateShop>>,
+        TError,
+        AdminUpdateShopMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAdminUpdateShopMutationOptions(options));
+    }
+
+export const getAdminAddShopMemberUrl = (shopId: number,) => {
+
+
+
+
+  return `/api/admin/shops/${shopId}/members`
+}
+
+/**
+ * @summary Grant verified email access to a shop
+ */
+export const adminAddShopMember = async (shopId: number,
+    adminAddShopMemberBody: AdminAddShopMemberBody, options?: Parameters<typeof customFetch>[1]): Promise<ShopMember> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ShopMember>(getAdminAddShopMemberUrl(shopId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminAddShopMemberBody)
+  }
+);}
+
+
+
+
+
+export const getAdminAddShopMemberMutationKey = () => ['adminAddShopMember'] as const;
+
+export const getAdminAddShopMemberMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminAddShopMember>>, TError,AdminAddShopMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminAddShopMember>>, TError,AdminAddShopMemberMutationVariables, TContext> => {
+
+const mutationKey = getAdminAddShopMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminAddShopMember>>, AdminAddShopMemberMutationVariables> = (props) => {
+          const {shopId,data} = props ?? {};
+
+          return  adminAddShopMember(shopId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminAddShopMemberMutationResult = NonNullable<Awaited<ReturnType<typeof adminAddShopMember>>>
+    export type AdminAddShopMemberMutationBody = BodyType<AdminAddShopMemberBody>
+    export type AdminAddShopMemberMutationError = ErrorType<unknown>
+    export type AdminAddShopMemberMutationVariables = {shopId: number;data: BodyType<AdminAddShopMemberBody>}
+
+    /**
+ * @summary Grant verified email access to a shop
+ */
+export const useAdminAddShopMember = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminAddShopMember>>, TError,AdminAddShopMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminAddShopMember>>,
+        TError,
+        AdminAddShopMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAdminAddShopMemberMutationOptions(options));
+    }
+
+export const getAdminRemoveShopMemberUrl = (shopId: number,
+    memberId: number,) => {
+
+
+
+
+  return `/api/admin/shops/${shopId}/members/${memberId}`
+}
+
+/**
+ * @summary Revoke a merchant's access to this shop
+ */
+export const adminRemoveShopMember = async (shopId: number,
+    memberId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getAdminRemoveShopMemberUrl(shopId,memberId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdminRemoveShopMemberMutationKey = () => ['adminRemoveShopMember'] as const;
+
+export const getAdminRemoveShopMemberMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRemoveShopMember>>, TError,AdminRemoveShopMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminRemoveShopMember>>, TError,AdminRemoveShopMemberMutationVariables, TContext> => {
+
+const mutationKey = getAdminRemoveShopMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminRemoveShopMember>>, AdminRemoveShopMemberMutationVariables> = (props) => {
+          const {shopId,memberId} = props ?? {};
+
+          return  adminRemoveShopMember(shopId,memberId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminRemoveShopMemberMutationResult = NonNullable<Awaited<ReturnType<typeof adminRemoveShopMember>>>
+
+    export type AdminRemoveShopMemberMutationError = ErrorType<unknown>
+    export type AdminRemoveShopMemberMutationVariables = {shopId: number;memberId: number}
+
+    /**
+ * @summary Revoke a merchant's access to this shop
+ */
+export const useAdminRemoveShopMember = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRemoveShopMember>>, TError,AdminRemoveShopMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminRemoveShopMember>>,
+        TError,
+        AdminRemoveShopMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAdminRemoveShopMemberMutationOptions(options));
+    }
 
 export const getGetAdminSummaryUrl = () => {
 
@@ -2189,5 +2780,914 @@ export const useAdminDeleteDiscount = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getAdminDeleteDiscountMutationOptions(options));
+    }
+
+export const getMerchantListShopsUrl = () => {
+
+
+
+
+  return `/api/merchant/shops`
+}
+
+/**
+ * @summary List shops assigned to the verified merchant account
+ */
+export const merchantListShops = async ( options?: Parameters<typeof customFetch>[1]): Promise<MerchantListShops200> => {
+
+  return customFetch<MerchantListShops200>(getMerchantListShopsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getMerchantListShopsQueryKey = () => {
+    return [
+    `/api/merchant/shops`
+    ] as const;
+    }
+
+
+export const getMerchantListShopsQueryOptions = <TData = Awaited<ReturnType<typeof merchantListShops>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantListShops>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMerchantListShopsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof merchantListShops>>> = ({ signal }) => merchantListShops({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof merchantListShops>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type MerchantListShopsQueryResult = NonNullable<Awaited<ReturnType<typeof merchantListShops>>>
+export type MerchantListShopsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List shops assigned to the verified merchant account
+ */
+
+export function useMerchantListShops<TData = Awaited<ReturnType<typeof merchantListShops>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantListShops>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getMerchantListShopsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMerchantGetSummaryUrl = (shopId: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/summary`
+}
+
+/**
+ * @summary Read shop sales and inventory summary
+ */
+export const merchantGetSummary = async (shopId: number, options?: Parameters<typeof customFetch>[1]): Promise<AdminSummary> => {
+
+  return customFetch<AdminSummary>(getMerchantGetSummaryUrl(shopId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getMerchantGetSummaryQueryKey = (shopId: number,) => {
+    return [
+    `/api/merchant/shops/${shopId}/summary`
+    ] as const;
+    }
+
+
+export const getMerchantGetSummaryQueryOptions = <TData = Awaited<ReturnType<typeof merchantGetSummary>>, TError = ErrorType<unknown>>(shopId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantGetSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMerchantGetSummaryQueryKey(shopId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof merchantGetSummary>>> = ({ signal }) => merchantGetSummary(shopId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shopId !== null && shopId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof merchantGetSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type MerchantGetSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof merchantGetSummary>>>
+export type MerchantGetSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read shop sales and inventory summary
+ */
+
+export function useMerchantGetSummary<TData = Awaited<ReturnType<typeof merchantGetSummary>>, TError = ErrorType<unknown>>(
+ shopId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantGetSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getMerchantGetSummaryQueryOptions(shopId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMerchantListProductsUrl = (shopId: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/products`
+}
+
+/**
+ * @summary List products owned by the selected shop
+ */
+export const merchantListProducts = async (shopId: number, options?: Parameters<typeof customFetch>[1]): Promise<MerchantListProducts200> => {
+
+  return customFetch<MerchantListProducts200>(getMerchantListProductsUrl(shopId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getMerchantListProductsQueryKey = (shopId: number,) => {
+    return [
+    `/api/merchant/shops/${shopId}/products`
+    ] as const;
+    }
+
+
+export const getMerchantListProductsQueryOptions = <TData = Awaited<ReturnType<typeof merchantListProducts>>, TError = ErrorType<unknown>>(shopId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantListProducts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMerchantListProductsQueryKey(shopId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof merchantListProducts>>> = ({ signal }) => merchantListProducts(shopId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shopId !== null && shopId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof merchantListProducts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type MerchantListProductsQueryResult = NonNullable<Awaited<ReturnType<typeof merchantListProducts>>>
+export type MerchantListProductsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List products owned by the selected shop
+ */
+
+export function useMerchantListProducts<TData = Awaited<ReturnType<typeof merchantListProducts>>, TError = ErrorType<unknown>>(
+ shopId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantListProducts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getMerchantListProductsQueryOptions(shopId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMerchantCreateProductUrl = (shopId: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/products`
+}
+
+/**
+ * @summary Add a product to the selected shop
+ */
+export const merchantCreateProduct = async (shopId: number,
+    merchantProductInput: MerchantProductInput, options?: Parameters<typeof customFetch>[1]): Promise<Product> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Product>(getMerchantCreateProductUrl(shopId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(merchantProductInput)
+  }
+);}
+
+
+
+
+
+export const getMerchantCreateProductMutationKey = () => ['merchantCreateProduct'] as const;
+
+export const getMerchantCreateProductMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantCreateProduct>>, TError,MerchantCreateProductMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof merchantCreateProduct>>, TError,MerchantCreateProductMutationVariables, TContext> => {
+
+const mutationKey = getMerchantCreateProductMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof merchantCreateProduct>>, MerchantCreateProductMutationVariables> = (props) => {
+          const {shopId,data} = props ?? {};
+
+          return  merchantCreateProduct(shopId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MerchantCreateProductMutationResult = NonNullable<Awaited<ReturnType<typeof merchantCreateProduct>>>
+    export type MerchantCreateProductMutationBody = BodyType<MerchantProductInput>
+    export type MerchantCreateProductMutationError = ErrorType<unknown>
+    export type MerchantCreateProductMutationVariables = {shopId: number;data: BodyType<MerchantProductInput>}
+
+    /**
+ * @summary Add a product to the selected shop
+ */
+export const useMerchantCreateProduct = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantCreateProduct>>, TError,MerchantCreateProductMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof merchantCreateProduct>>,
+        TError,
+        MerchantCreateProductMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMerchantCreateProductMutationOptions(options));
+    }
+
+export const getMerchantUpdateProductUrl = (shopId: number,
+    id: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/products/${id}`
+}
+
+/**
+ * @summary Update a product belonging to the selected shop
+ */
+export const merchantUpdateProduct = async (shopId: number,
+    id: number,
+    merchantProductPatch: MerchantProductPatch, options?: Parameters<typeof customFetch>[1]): Promise<Product> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Product>(getMerchantUpdateProductUrl(shopId,id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(merchantProductPatch)
+  }
+);}
+
+
+
+
+
+export const getMerchantUpdateProductMutationKey = () => ['merchantUpdateProduct'] as const;
+
+export const getMerchantUpdateProductMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateProduct>>, TError,MerchantUpdateProductMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateProduct>>, TError,MerchantUpdateProductMutationVariables, TContext> => {
+
+const mutationKey = getMerchantUpdateProductMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof merchantUpdateProduct>>, MerchantUpdateProductMutationVariables> = (props) => {
+          const {shopId,id,data} = props ?? {};
+
+          return  merchantUpdateProduct(shopId,id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MerchantUpdateProductMutationResult = NonNullable<Awaited<ReturnType<typeof merchantUpdateProduct>>>
+    export type MerchantUpdateProductMutationBody = BodyType<MerchantProductPatch>
+    export type MerchantUpdateProductMutationError = ErrorType<unknown>
+    export type MerchantUpdateProductMutationVariables = {shopId: number;id: number;data: BodyType<MerchantProductPatch>}
+
+    /**
+ * @summary Update a product belonging to the selected shop
+ */
+export const useMerchantUpdateProduct = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateProduct>>, TError,MerchantUpdateProductMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof merchantUpdateProduct>>,
+        TError,
+        MerchantUpdateProductMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMerchantUpdateProductMutationOptions(options));
+    }
+
+export const getMerchantDeleteProductUrl = (shopId: number,
+    id: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/products/${id}`
+}
+
+/**
+ * @summary Delete a product belonging to the selected shop
+ */
+export const merchantDeleteProduct = async (shopId: number,
+    id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getMerchantDeleteProductUrl(shopId,id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getMerchantDeleteProductMutationKey = () => ['merchantDeleteProduct'] as const;
+
+export const getMerchantDeleteProductMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantDeleteProduct>>, TError,MerchantDeleteProductMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof merchantDeleteProduct>>, TError,MerchantDeleteProductMutationVariables, TContext> => {
+
+const mutationKey = getMerchantDeleteProductMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof merchantDeleteProduct>>, MerchantDeleteProductMutationVariables> = (props) => {
+          const {shopId,id} = props ?? {};
+
+          return  merchantDeleteProduct(shopId,id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MerchantDeleteProductMutationResult = NonNullable<Awaited<ReturnType<typeof merchantDeleteProduct>>>
+
+    export type MerchantDeleteProductMutationError = ErrorType<unknown>
+    export type MerchantDeleteProductMutationVariables = {shopId: number;id: number}
+
+    /**
+ * @summary Delete a product belonging to the selected shop
+ */
+export const useMerchantDeleteProduct = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantDeleteProduct>>, TError,MerchantDeleteProductMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof merchantDeleteProduct>>,
+        TError,
+        MerchantDeleteProductMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMerchantDeleteProductMutationOptions(options));
+    }
+
+export const getMerchantListOrdersUrl = (shopId: number,
+    params?: MerchantListOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/merchant/shops/${shopId}/orders?${stringifiedParams}` : `/api/merchant/shops/${shopId}/orders`
+}
+
+/**
+ * @summary Search orders for the selected shop only
+ */
+export const merchantListOrders = async (shopId: number,
+    params?: MerchantListOrdersParams, options?: Parameters<typeof customFetch>[1]): Promise<MerchantListOrders200> => {
+
+  return customFetch<MerchantListOrders200>(getMerchantListOrdersUrl(shopId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getMerchantListOrdersQueryKey = (shopId: number,
+    params?: MerchantListOrdersParams,) => {
+    return [
+    `/api/merchant/shops/${shopId}/orders`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getMerchantListOrdersQueryOptions = <TData = Awaited<ReturnType<typeof merchantListOrders>>, TError = ErrorType<unknown>>(shopId: number,
+    params?: MerchantListOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantListOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMerchantListOrdersQueryKey(shopId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof merchantListOrders>>> = ({ signal }) => merchantListOrders(shopId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shopId !== null && shopId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof merchantListOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type MerchantListOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof merchantListOrders>>>
+export type MerchantListOrdersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Search orders for the selected shop only
+ */
+
+export function useMerchantListOrders<TData = Awaited<ReturnType<typeof merchantListOrders>>, TError = ErrorType<unknown>>(
+ shopId: number,
+    params?: MerchantListOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantListOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getMerchantListOrdersQueryOptions(shopId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMerchantUpdateOrderStatusUrl = (shopId: number,
+    id: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/orders/${id}`
+}
+
+/**
+ * @summary Update status for an order belonging to the selected shop
+ */
+export const merchantUpdateOrderStatus = async (shopId: number,
+    id: number,
+    orderStatusPatch: OrderStatusPatch, options?: Parameters<typeof customFetch>[1]): Promise<AdminOrder> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdminOrder>(getMerchantUpdateOrderStatusUrl(shopId,id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(orderStatusPatch)
+  }
+);}
+
+
+
+
+
+export const getMerchantUpdateOrderStatusMutationKey = () => ['merchantUpdateOrderStatus'] as const;
+
+export const getMerchantUpdateOrderStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateOrderStatus>>, TError,MerchantUpdateOrderStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateOrderStatus>>, TError,MerchantUpdateOrderStatusMutationVariables, TContext> => {
+
+const mutationKey = getMerchantUpdateOrderStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof merchantUpdateOrderStatus>>, MerchantUpdateOrderStatusMutationVariables> = (props) => {
+          const {shopId,id,data} = props ?? {};
+
+          return  merchantUpdateOrderStatus(shopId,id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MerchantUpdateOrderStatusMutationResult = NonNullable<Awaited<ReturnType<typeof merchantUpdateOrderStatus>>>
+    export type MerchantUpdateOrderStatusMutationBody = BodyType<OrderStatusPatch>
+    export type MerchantUpdateOrderStatusMutationError = ErrorType<unknown>
+    export type MerchantUpdateOrderStatusMutationVariables = {shopId: number;id: number;data: BodyType<OrderStatusPatch>}
+
+    /**
+ * @summary Update status for an order belonging to the selected shop
+ */
+export const useMerchantUpdateOrderStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateOrderStatus>>, TError,MerchantUpdateOrderStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof merchantUpdateOrderStatus>>,
+        TError,
+        MerchantUpdateOrderStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMerchantUpdateOrderStatusMutationOptions(options));
+    }
+
+export const getMerchantConfirmCodPaymentUrl = (shopId: number,
+    id: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/orders/${id}/cod-payment`
+}
+
+/**
+ * @summary Record cash received for a COD order in this shop
+ */
+export const merchantConfirmCodPayment = async (shopId: number,
+    id: number, options?: Parameters<typeof customFetch>[1]): Promise<CodPaymentReceipt> => {
+
+  return customFetch<CodPaymentReceipt>(getMerchantConfirmCodPaymentUrl(shopId,id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMerchantConfirmCodPaymentMutationKey = () => ['merchantConfirmCodPayment'] as const;
+
+export const getMerchantConfirmCodPaymentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantConfirmCodPayment>>, TError,MerchantConfirmCodPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof merchantConfirmCodPayment>>, TError,MerchantConfirmCodPaymentMutationVariables, TContext> => {
+
+const mutationKey = getMerchantConfirmCodPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof merchantConfirmCodPayment>>, MerchantConfirmCodPaymentMutationVariables> = (props) => {
+          const {shopId,id} = props ?? {};
+
+          return  merchantConfirmCodPayment(shopId,id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MerchantConfirmCodPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof merchantConfirmCodPayment>>>
+
+    export type MerchantConfirmCodPaymentMutationError = ErrorType<unknown>
+    export type MerchantConfirmCodPaymentMutationVariables = {shopId: number;id: number}
+
+    /**
+ * @summary Record cash received for a COD order in this shop
+ */
+export const useMerchantConfirmCodPayment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantConfirmCodPayment>>, TError,MerchantConfirmCodPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof merchantConfirmCodPayment>>,
+        TError,
+        MerchantConfirmCodPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMerchantConfirmCodPaymentMutationOptions(options));
+    }
+
+export const getMerchantGetShopSettingsUrl = (shopId: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/settings`
+}
+
+/**
+ * @summary Read delivery settings for this shop
+ */
+export const merchantGetShopSettings = async (shopId: number, options?: Parameters<typeof customFetch>[1]): Promise<ShopSettings> => {
+
+  return customFetch<ShopSettings>(getMerchantGetShopSettingsUrl(shopId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getMerchantGetShopSettingsQueryKey = (shopId: number,) => {
+    return [
+    `/api/merchant/shops/${shopId}/settings`
+    ] as const;
+    }
+
+
+export const getMerchantGetShopSettingsQueryOptions = <TData = Awaited<ReturnType<typeof merchantGetShopSettings>>, TError = ErrorType<unknown>>(shopId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantGetShopSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMerchantGetShopSettingsQueryKey(shopId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof merchantGetShopSettings>>> = ({ signal }) => merchantGetShopSettings(shopId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: shopId !== null && shopId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof merchantGetShopSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type MerchantGetShopSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof merchantGetShopSettings>>>
+export type MerchantGetShopSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read delivery settings for this shop
+ */
+
+export function useMerchantGetShopSettings<TData = Awaited<ReturnType<typeof merchantGetShopSettings>>, TError = ErrorType<unknown>>(
+ shopId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof merchantGetShopSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getMerchantGetShopSettingsQueryOptions(shopId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMerchantUpdateShopSettingsUrl = (shopId: number,) => {
+
+
+
+
+  return `/api/merchant/shops/${shopId}/settings`
+}
+
+/**
+ * @summary Change the selected shop's delivery settings
+ */
+export const merchantUpdateShopSettings = async (shopId: number,
+    shopSettingsPatch: ShopSettingsPatch, options?: Parameters<typeof customFetch>[1]): Promise<ShopSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ShopSettings>(getMerchantUpdateShopSettingsUrl(shopId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(shopSettingsPatch)
+  }
+);}
+
+
+
+
+
+export const getMerchantUpdateShopSettingsMutationKey = () => ['merchantUpdateShopSettings'] as const;
+
+export const getMerchantUpdateShopSettingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateShopSettings>>, TError,MerchantUpdateShopSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateShopSettings>>, TError,MerchantUpdateShopSettingsMutationVariables, TContext> => {
+
+const mutationKey = getMerchantUpdateShopSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof merchantUpdateShopSettings>>, MerchantUpdateShopSettingsMutationVariables> = (props) => {
+          const {shopId,data} = props ?? {};
+
+          return  merchantUpdateShopSettings(shopId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MerchantUpdateShopSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof merchantUpdateShopSettings>>>
+    export type MerchantUpdateShopSettingsMutationBody = BodyType<ShopSettingsPatch>
+    export type MerchantUpdateShopSettingsMutationError = ErrorType<unknown>
+    export type MerchantUpdateShopSettingsMutationVariables = {shopId: number;data: BodyType<ShopSettingsPatch>}
+
+    /**
+ * @summary Change the selected shop's delivery settings
+ */
+export const useMerchantUpdateShopSettings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof merchantUpdateShopSettings>>, TError,MerchantUpdateShopSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof merchantUpdateShopSettings>>,
+        TError,
+        MerchantUpdateShopSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMerchantUpdateShopSettingsMutationOptions(options));
     }
 

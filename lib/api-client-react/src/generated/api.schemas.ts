@@ -13,6 +13,24 @@ export interface ErrorResponse {
   message: string;
 }
 
+export interface DeliveryOption {
+  id: string;
+  label: string;
+  /** @minimum 0 */
+  fee: number;
+  active: boolean;
+}
+
+export interface ShopSummary {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  deliveryCharge: number;
+  minimumOrder: number;
+  deliveryOptions: DeliveryOption[];
+}
+
 export interface Product {
   id: number;
   slug: string;
@@ -25,7 +43,116 @@ export interface Product {
   categoryName: string | null;
   categorySlug: string | null;
   imageUrl: string | null;
+  shop: ShopSummary | null;
   isVisible: boolean;
+}
+
+export interface ShopMember {
+  id: number;
+  email: string;
+  isActive: boolean;
+}
+
+export interface AdminShop {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  deliveryCharge: number;
+  minimumOrder: number;
+  deliveryOptions: DeliveryOption[];
+  isActive: boolean;
+  members: ShopMember[];
+}
+
+export interface ShopInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+     */
+  slug: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+  /** @maxLength 500 */
+  description: string;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  deliveryCharge: number;
+  /**
+     * @minimum 0
+     * @maximum 10000000
+     */
+  minimumOrder: number;
+  /** @maxItems 10 */
+  deliveryOptions: DeliveryOption[];
+  isActive: boolean;
+}
+
+export interface ShopPatch {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+     */
+  slug?: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name?: string;
+  /** @maxLength 500 */
+  description?: string;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  deliveryCharge?: number;
+  /**
+     * @minimum 0
+     * @maximum 10000000
+     */
+  minimumOrder?: number;
+  /** @maxItems 10 */
+  deliveryOptions?: DeliveryOption[];
+  isActive?: boolean;
+}
+
+export interface ShopSettings {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  deliveryCharge: number;
+  minimumOrder: number;
+  deliveryOptions: DeliveryOption[];
+}
+
+export interface ShopSettingsPatch {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name?: string;
+  /** @maxLength 500 */
+  description?: string;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  deliveryCharge?: number;
+  /**
+     * @minimum 0
+     * @maximum 10000000
+     */
+  minimumOrder?: number;
+  /** @maxItems 10 */
+  deliveryOptions?: DeliveryOption[];
 }
 
 export interface Category {
@@ -34,14 +161,6 @@ export interface Category {
   name: string;
   isActive: boolean;
   sortOrder: number;
-}
-
-export interface DeliveryOption {
-  id: string;
-  label: string;
-  /** @minimum 0 */
-  fee: number;
-  active: boolean;
 }
 
 export interface StoreSettings {
@@ -136,6 +255,7 @@ export interface CreateOrderInput {
 
 export interface OrderReceipt {
   reference: string;
+  shopName: string;
   subtotal: number;
   deliveryFee: number;
   discountAmount: number;
@@ -143,6 +263,35 @@ export interface OrderReceipt {
   paymentMethod: PaymentMethodCode;
   paymentStatus: PaymentStatus;
   orderStatus: OrderStatus;
+}
+
+export interface OrderItem {
+  productId: number | null;
+  productName: string;
+  unit: string;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+export interface CustomerOrder {
+  id: number;
+  reference: string;
+  shopName: string;
+  total: number;
+  paymentMethod: PaymentMethodCode;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+  createdAt: string;
+  items: OrderItem[];
+}
+
+export interface OrderStatusPatch {
+  status: OrderStatus;
+}
+
+export interface CodPaymentReceipt {
+  paymentStatus: PaymentStatus;
 }
 
 export interface ProductInput {
@@ -177,10 +326,84 @@ export interface ProductInput {
   categoryId: number | null;
   /** @maxLength 1000 */
   imageUrl: string | null;
+  /** @minimum 1 */
+  shopId: number;
   isVisible: boolean;
 }
 
 export interface ProductPatch {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+     */
+  slug?: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name?: string;
+  /** @maxLength 1000 */
+  description?: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  unit?: string;
+  /**
+     * @minimum 0
+     * @maximum 10000000
+     */
+  price?: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     */
+  stock?: number;
+  categoryId?: number | null;
+  /** @maxLength 1000 */
+  imageUrl?: string | null;
+  /** @minimum 1 */
+  shopId?: number;
+  isVisible?: boolean;
+}
+
+export interface MerchantProductInput {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+     */
+  slug: string;
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 1000 */
+  description: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  unit: string;
+  /**
+     * @minimum 0
+     * @maximum 10000000
+     */
+  price: number;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     */
+  stock: number;
+  categoryId: number | null;
+  /** @maxLength 1000 */
+  imageUrl: string | null;
+  isVisible: boolean;
+}
+
+export interface MerchantProductPatch {
   /**
      * @minLength 2
      * @maxLength 100
@@ -264,18 +487,11 @@ export interface AdminSummary {
   totalOrders: number;
 }
 
-export interface OrderItem {
-  productId: number | null;
-  productName: string;
-  unit: string;
-  unitPrice: number;
-  quantity: number;
-  lineTotal: number;
-}
-
 export interface AdminOrder {
   id: number;
   reference: string;
+  shopId: number | null;
+  shopName: string | null;
   customerName: string;
   phone: string;
   address: string;
@@ -401,6 +617,10 @@ export type ListProducts200 = {
   products: Product[];
 };
 
+export type ListShops200 = {
+  shops: ShopSummary[];
+};
+
 export type ListCategories200 = {
   categories: Category[];
 };
@@ -424,8 +644,20 @@ export type PreviewDiscount200 = {
   discountAmount: number;
 };
 
+export type GetMyOrders200 = {
+  orders: CustomerOrder[];
+};
+
 export type GetAdminIdentity200 = {
   authorized: boolean;
+  email: string;
+};
+
+export type AdminListShops200 = {
+  shops: AdminShop[];
+};
+
+export type AdminAddShopMemberBody = {
   email: string;
 };
 
@@ -459,5 +691,25 @@ export type AdminConfirmCodPayment200 = {
 
 export type AdminListDiscounts200 = {
   discounts: Discount[];
+};
+
+export type MerchantListShops200 = {
+  shops: ShopSummary[];
+};
+
+export type MerchantListProducts200 = {
+  products: Product[];
+};
+
+export type MerchantListOrdersParams = {
+/**
+ * @maxLength 100
+ */
+search?: string;
+status?: OrderStatus;
+};
+
+export type MerchantListOrders200 = {
+  orders: AdminOrder[];
 };
 

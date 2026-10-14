@@ -19,6 +19,10 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List visible products
  */
+export const listProductsResponseProductsItemShopOneDeliveryOptionsItemFeeMin = 0;
+
+
+
 export const ListProductsResponse = zod.object({
   "products": zod.array(zod.object({
   "id": zod.number().int(),
@@ -32,7 +36,46 @@ export const ListProductsResponse = zod.object({
   "categoryName": zod.string().nullable(),
   "categorySlug": zod.string().nullable(),
   "imageUrl": zod.string().nullable(),
+  "shop": zod.union([zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(listProductsResponseProductsItemShopOneDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+}),zod.null()]),
   "isVisible": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary List active independent shops
+ */
+export const listShopsResponseShopsItemDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const ListShopsResponse = zod.object({
+  "shops": zod.array(zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(listShopsResponseShopsItemDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
 }))
 })
 
@@ -144,6 +187,7 @@ export const CreateOrderBody = zod.object({
 
 export const CreateOrderResponse = zod.object({
   "reference": zod.string(),
+  "shopName": zod.string(),
   "subtotal": zod.number(),
   "deliveryFee": zod.number(),
   "discountAmount": zod.number(),
@@ -155,12 +199,243 @@ export const CreateOrderResponse = zod.object({
 
 
 /**
+ * @summary List orders placed by the signed-in customer
+ */
+export const GetMyOrdersResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "id": zod.number().int(),
+  "reference": zod.string(),
+  "shopName": zod.string(),
+  "total": zod.number(),
+  "paymentMethod": zod.enum(['cod', 'bkash', 'nagad', 'rocket', 'upay', 'bank', 'card']),
+  "paymentStatus": zod.enum(['pending', 'paid', 'failed', 'refunded']),
+  "status": zod.enum(['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled']),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "productId": zod.number().int().nullable(),
+  "productName": zod.string(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "quantity": zod.number().int(),
+  "lineTotal": zod.number()
+}))
+}))
+})
+
+
+/**
  * @summary Confirm the signed-in user is an authorized administrator
  */
 export const GetAdminIdentityResponse = zod.object({
   "authorized": zod.boolean(),
   "email": zod.string()
 })
+
+
+/**
+ * @summary List shops and merchant access
+ */
+export const adminListShopsResponseShopsItemDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const AdminListShopsResponse = zod.object({
+  "shops": zod.array(zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(adminListShopsResponseShopsItemDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+})),
+  "isActive": zod.boolean(),
+  "members": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "isActive": zod.boolean()
+}))
+}))
+})
+
+
+/**
+ * @summary Create an independent shop
+ */
+export const adminCreateShopBodySlugMin = 2;
+export const adminCreateShopBodySlugMax = 80;
+
+
+export const adminCreateShopBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const adminCreateShopBodyNameMin = 2;
+export const adminCreateShopBodyNameMax = 100;
+
+export const adminCreateShopBodyDescriptionMax = 500;
+
+export const adminCreateShopBodyDeliveryChargeMin = 0;
+export const adminCreateShopBodyDeliveryChargeMax = 100000;
+
+export const adminCreateShopBodyMinimumOrderMin = 0;
+export const adminCreateShopBodyMinimumOrderMax = 10000000;
+
+export const adminCreateShopBodyDeliveryOptionsItemFeeMin = 0;
+
+export const adminCreateShopBodyDeliveryOptionsMax = 10;
+
+
+
+export const AdminCreateShopBody = zod.object({
+  "slug": zod.string().min(adminCreateShopBodySlugMin).max(adminCreateShopBodySlugMax).regex(adminCreateShopBodySlugRegExp),
+  "name": zod.string().min(adminCreateShopBodyNameMin).max(adminCreateShopBodyNameMax),
+  "description": zod.string().max(adminCreateShopBodyDescriptionMax),
+  "deliveryCharge": zod.number().min(adminCreateShopBodyDeliveryChargeMin).max(adminCreateShopBodyDeliveryChargeMax),
+  "minimumOrder": zod.number().min(adminCreateShopBodyMinimumOrderMin).max(adminCreateShopBodyMinimumOrderMax),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(adminCreateShopBodyDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+})).max(adminCreateShopBodyDeliveryOptionsMax),
+  "isActive": zod.boolean()
+})
+
+export const adminCreateShopResponseDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const AdminCreateShopResponse = zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(adminCreateShopResponseDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+})),
+  "isActive": zod.boolean(),
+  "members": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "isActive": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Update shop details or suspend the shop
+ */
+
+
+
+export const AdminUpdateShopParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1)
+})
+
+export const adminUpdateShopBodySlugMin = 2;
+export const adminUpdateShopBodySlugMax = 80;
+
+
+export const adminUpdateShopBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const adminUpdateShopBodyNameMin = 2;
+export const adminUpdateShopBodyNameMax = 100;
+
+export const adminUpdateShopBodyDescriptionMax = 500;
+
+export const adminUpdateShopBodyDeliveryChargeMin = 0;
+export const adminUpdateShopBodyDeliveryChargeMax = 100000;
+
+export const adminUpdateShopBodyMinimumOrderMin = 0;
+export const adminUpdateShopBodyMinimumOrderMax = 10000000;
+
+export const adminUpdateShopBodyDeliveryOptionsItemFeeMin = 0;
+
+export const adminUpdateShopBodyDeliveryOptionsMax = 10;
+
+
+
+export const AdminUpdateShopBody = zod.object({
+  "slug": zod.string().min(adminUpdateShopBodySlugMin).max(adminUpdateShopBodySlugMax).regex(adminUpdateShopBodySlugRegExp).optional(),
+  "name": zod.string().min(adminUpdateShopBodyNameMin).max(adminUpdateShopBodyNameMax).optional(),
+  "description": zod.string().max(adminUpdateShopBodyDescriptionMax).optional(),
+  "deliveryCharge": zod.number().min(adminUpdateShopBodyDeliveryChargeMin).max(adminUpdateShopBodyDeliveryChargeMax).optional(),
+  "minimumOrder": zod.number().min(adminUpdateShopBodyMinimumOrderMin).max(adminUpdateShopBodyMinimumOrderMax).optional(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(adminUpdateShopBodyDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+})).max(adminUpdateShopBodyDeliveryOptionsMax).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const adminUpdateShopResponseDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const AdminUpdateShopResponse = zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(adminUpdateShopResponseDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+})),
+  "isActive": zod.boolean(),
+  "members": zod.array(zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "isActive": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Grant verified email access to a shop
+ */
+
+
+
+export const AdminAddShopMemberParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1)
+})
+
+export const AdminAddShopMemberBody = zod.object({
+  "email": zod.string().email()
+})
+
+export const AdminAddShopMemberResponse = zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "isActive": zod.boolean()
+})
+
+
+/**
+ * @summary Revoke a merchant's access to this shop
+ */
+
+
+
+
+export const AdminRemoveShopMemberParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1),
+  "memberId": zod.coerce.number().int().min(1)
+})
+
+export const AdminRemoveShopMemberResponse = zod.void()
 
 
 /**
@@ -179,6 +454,10 @@ export const GetAdminSummaryResponse = zod.object({
 /**
  * @summary List all products, including hidden products
  */
+export const adminListProductsResponseProductsItemShopOneDeliveryOptionsItemFeeMin = 0;
+
+
+
 export const AdminListProductsResponse = zod.object({
   "products": zod.array(zod.object({
   "id": zod.number().int(),
@@ -192,6 +471,20 @@ export const AdminListProductsResponse = zod.object({
   "categoryName": zod.string().nullable(),
   "categorySlug": zod.string().nullable(),
   "imageUrl": zod.string().nullable(),
+  "shop": zod.union([zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(adminListProductsResponseProductsItemShopOneDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+}),zod.null()]),
   "isVisible": zod.boolean()
 }))
 })
@@ -222,6 +515,7 @@ export const adminCreateProductBodyImageUrlMax = 1000;
 
 
 
+
 export const AdminCreateProductBody = zod.object({
   "slug": zod.string().min(adminCreateProductBodySlugMin).max(adminCreateProductBodySlugMax).regex(adminCreateProductBodySlugRegExp),
   "name": zod.string().min(adminCreateProductBodyNameMin).max(adminCreateProductBodyNameMax),
@@ -231,8 +525,13 @@ export const AdminCreateProductBody = zod.object({
   "stock": zod.number().int().min(adminCreateProductBodyStockMin).max(adminCreateProductBodyStockMax),
   "categoryId": zod.number().int().nullable(),
   "imageUrl": zod.string().max(adminCreateProductBodyImageUrlMax).nullable(),
+  "shopId": zod.number().int().min(1),
   "isVisible": zod.boolean()
 })
+
+export const adminCreateProductResponseShopOneDeliveryOptionsItemFeeMin = 0;
+
+
 
 export const AdminCreateProductResponse = zod.object({
   "id": zod.number().int(),
@@ -246,6 +545,20 @@ export const AdminCreateProductResponse = zod.object({
   "categoryName": zod.string().nullable(),
   "categorySlug": zod.string().nullable(),
   "imageUrl": zod.string().nullable(),
+  "shop": zod.union([zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(adminCreateProductResponseShopOneDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+}),zod.null()]),
   "isVisible": zod.boolean()
 })
 
@@ -282,6 +595,7 @@ export const adminUpdateProductBodyImageUrlMax = 1000;
 
 
 
+
 export const AdminUpdateProductBody = zod.object({
   "slug": zod.string().min(adminUpdateProductBodySlugMin).max(adminUpdateProductBodySlugMax).regex(adminUpdateProductBodySlugRegExp).optional(),
   "name": zod.string().min(adminUpdateProductBodyNameMin).max(adminUpdateProductBodyNameMax).optional(),
@@ -291,8 +605,13 @@ export const AdminUpdateProductBody = zod.object({
   "stock": zod.number().int().min(adminUpdateProductBodyStockMin).max(adminUpdateProductBodyStockMax).optional(),
   "categoryId": zod.number().int().nullish(),
   "imageUrl": zod.string().max(adminUpdateProductBodyImageUrlMax).nullish(),
+  "shopId": zod.number().int().min(1).optional(),
   "isVisible": zod.boolean().optional()
 })
+
+export const adminUpdateProductResponseShopOneDeliveryOptionsItemFeeMin = 0;
+
+
 
 export const AdminUpdateProductResponse = zod.object({
   "id": zod.number().int(),
@@ -306,6 +625,20 @@ export const AdminUpdateProductResponse = zod.object({
   "categoryName": zod.string().nullable(),
   "categorySlug": zod.string().nullable(),
   "imageUrl": zod.string().nullable(),
+  "shop": zod.union([zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(adminUpdateProductResponseShopOneDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+}),zod.null()]),
   "isVisible": zod.boolean()
 })
 
@@ -437,6 +770,8 @@ export const AdminListOrdersResponse = zod.object({
   "orders": zod.array(zod.object({
   "id": zod.number().int(),
   "reference": zod.string(),
+  "shopId": zod.number().int().nullable(),
+  "shopName": zod.string().nullable(),
   "customerName": zod.string(),
   "phone": zod.string(),
   "address": zod.string(),
@@ -479,6 +814,8 @@ export const AdminUpdateOrderStatusBody = zod.object({
 export const AdminUpdateOrderStatusResponse = zod.object({
   "id": zod.number().int(),
   "reference": zod.string(),
+  "shopId": zod.number().int().nullable(),
+  "shopName": zod.string().nullable(),
   "customerName": zod.string(),
   "phone": zod.string(),
   "address": zod.string(),
@@ -702,5 +1039,471 @@ export const AdminDeleteDiscountParams = zod.object({
 })
 
 export const AdminDeleteDiscountResponse = zod.void()
+
+
+/**
+ * @summary List shops assigned to the verified merchant account
+ */
+export const merchantListShopsResponseShopsItemDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const MerchantListShopsResponse = zod.object({
+  "shops": zod.array(zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(merchantListShopsResponseShopsItemDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+}))
+})
+
+
+/**
+ * @summary Read shop sales and inventory summary
+ */
+
+
+
+export const MerchantGetSummaryParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1)
+})
+
+export const MerchantGetSummaryResponse = zod.object({
+  "todayOrders": zod.number().int(),
+  "pendingOrders": zod.number().int(),
+  "totalProducts": zod.number().int(),
+  "lowStockProducts": zod.number().int(),
+  "paidSales": zod.number(),
+  "totalOrders": zod.number().int()
+})
+
+
+/**
+ * @summary List products owned by the selected shop
+ */
+
+
+
+export const MerchantListProductsParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1)
+})
+
+export const merchantListProductsResponseProductsItemShopOneDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const MerchantListProductsResponse = zod.object({
+  "products": zod.array(zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "unit": zod.string(),
+  "price": zod.number(),
+  "stock": zod.number().int(),
+  "categoryId": zod.number().int().nullable(),
+  "categoryName": zod.string().nullable(),
+  "categorySlug": zod.string().nullable(),
+  "imageUrl": zod.string().nullable(),
+  "shop": zod.union([zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(merchantListProductsResponseProductsItemShopOneDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+}),zod.null()]),
+  "isVisible": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Add a product to the selected shop
+ */
+
+
+
+export const MerchantCreateProductParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1)
+})
+
+export const merchantCreateProductBodySlugMin = 2;
+export const merchantCreateProductBodySlugMax = 100;
+
+
+export const merchantCreateProductBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const merchantCreateProductBodyNameMin = 2;
+export const merchantCreateProductBodyNameMax = 120;
+
+export const merchantCreateProductBodyDescriptionMax = 1000;
+
+export const merchantCreateProductBodyUnitMax = 40;
+
+export const merchantCreateProductBodyPriceMin = 0;
+export const merchantCreateProductBodyPriceMax = 10000000;
+
+export const merchantCreateProductBodyStockMin = 0;
+export const merchantCreateProductBodyStockMax = 1000000;
+
+export const merchantCreateProductBodyImageUrlMax = 1000;
+
+
+
+export const MerchantCreateProductBody = zod.object({
+  "slug": zod.string().min(merchantCreateProductBodySlugMin).max(merchantCreateProductBodySlugMax).regex(merchantCreateProductBodySlugRegExp),
+  "name": zod.string().min(merchantCreateProductBodyNameMin).max(merchantCreateProductBodyNameMax),
+  "description": zod.string().max(merchantCreateProductBodyDescriptionMax),
+  "unit": zod.string().min(1).max(merchantCreateProductBodyUnitMax),
+  "price": zod.number().min(merchantCreateProductBodyPriceMin).max(merchantCreateProductBodyPriceMax),
+  "stock": zod.number().int().min(merchantCreateProductBodyStockMin).max(merchantCreateProductBodyStockMax),
+  "categoryId": zod.number().int().nullable(),
+  "imageUrl": zod.string().max(merchantCreateProductBodyImageUrlMax).nullable(),
+  "isVisible": zod.boolean()
+})
+
+export const merchantCreateProductResponseShopOneDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const MerchantCreateProductResponse = zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "unit": zod.string(),
+  "price": zod.number(),
+  "stock": zod.number().int(),
+  "categoryId": zod.number().int().nullable(),
+  "categoryName": zod.string().nullable(),
+  "categorySlug": zod.string().nullable(),
+  "imageUrl": zod.string().nullable(),
+  "shop": zod.union([zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(merchantCreateProductResponseShopOneDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+}),zod.null()]),
+  "isVisible": zod.boolean()
+})
+
+
+/**
+ * @summary Update a product belonging to the selected shop
+ */
+
+
+
+
+export const MerchantUpdateProductParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1),
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const merchantUpdateProductBodySlugMin = 2;
+export const merchantUpdateProductBodySlugMax = 100;
+
+
+export const merchantUpdateProductBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const merchantUpdateProductBodyNameMin = 2;
+export const merchantUpdateProductBodyNameMax = 120;
+
+export const merchantUpdateProductBodyDescriptionMax = 1000;
+
+export const merchantUpdateProductBodyUnitMax = 40;
+
+export const merchantUpdateProductBodyPriceMin = 0;
+export const merchantUpdateProductBodyPriceMax = 10000000;
+
+export const merchantUpdateProductBodyStockMin = 0;
+export const merchantUpdateProductBodyStockMax = 1000000;
+
+export const merchantUpdateProductBodyImageUrlMax = 1000;
+
+
+
+export const MerchantUpdateProductBody = zod.object({
+  "slug": zod.string().min(merchantUpdateProductBodySlugMin).max(merchantUpdateProductBodySlugMax).regex(merchantUpdateProductBodySlugRegExp).optional(),
+  "name": zod.string().min(merchantUpdateProductBodyNameMin).max(merchantUpdateProductBodyNameMax).optional(),
+  "description": zod.string().max(merchantUpdateProductBodyDescriptionMax).optional(),
+  "unit": zod.string().min(1).max(merchantUpdateProductBodyUnitMax).optional(),
+  "price": zod.number().min(merchantUpdateProductBodyPriceMin).max(merchantUpdateProductBodyPriceMax).optional(),
+  "stock": zod.number().int().min(merchantUpdateProductBodyStockMin).max(merchantUpdateProductBodyStockMax).optional(),
+  "categoryId": zod.number().int().nullish(),
+  "imageUrl": zod.string().max(merchantUpdateProductBodyImageUrlMax).nullish(),
+  "isVisible": zod.boolean().optional()
+})
+
+export const merchantUpdateProductResponseShopOneDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const MerchantUpdateProductResponse = zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "unit": zod.string(),
+  "price": zod.number(),
+  "stock": zod.number().int(),
+  "categoryId": zod.number().int().nullable(),
+  "categoryName": zod.string().nullable(),
+  "categorySlug": zod.string().nullable(),
+  "imageUrl": zod.string().nullable(),
+  "shop": zod.union([zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(merchantUpdateProductResponseShopOneDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+}),zod.null()]),
+  "isVisible": zod.boolean()
+})
+
+
+/**
+ * @summary Delete a product belonging to the selected shop
+ */
+
+
+
+
+export const MerchantDeleteProductParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1),
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const MerchantDeleteProductResponse = zod.void()
+
+
+/**
+ * @summary Search orders for the selected shop only
+ */
+
+
+
+export const MerchantListOrdersParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1)
+})
+
+export const merchantListOrdersQuerySearchMax = 100;
+
+
+
+export const MerchantListOrdersQueryParams = zod.object({
+  "search": zod.coerce.string().max(merchantListOrdersQuerySearchMax).optional(),
+  "status": zod.enum(['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled']).optional()
+})
+
+export const MerchantListOrdersResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "id": zod.number().int(),
+  "reference": zod.string(),
+  "shopId": zod.number().int().nullable(),
+  "shopName": zod.string().nullable(),
+  "customerName": zod.string(),
+  "phone": zod.string(),
+  "address": zod.string(),
+  "deliveryOption": zod.string(),
+  "deliveryFee": zod.number(),
+  "subtotal": zod.number(),
+  "discountAmount": zod.number(),
+  "total": zod.number(),
+  "discountCode": zod.string().nullable(),
+  "paymentMethod": zod.enum(['cod', 'bkash', 'nagad', 'rocket', 'upay', 'bank', 'card']),
+  "paymentStatus": zod.enum(['pending', 'paid', 'failed', 'refunded']),
+  "status": zod.enum(['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled']),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "productId": zod.number().int().nullable(),
+  "productName": zod.string(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "quantity": zod.number().int(),
+  "lineTotal": zod.number()
+}))
+}))
+})
+
+
+/**
+ * @summary Update status for an order belonging to the selected shop
+ */
+
+
+
+
+export const MerchantUpdateOrderStatusParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1),
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const MerchantUpdateOrderStatusBody = zod.object({
+  "status": zod.enum(['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'])
+})
+
+export const MerchantUpdateOrderStatusResponse = zod.object({
+  "id": zod.number().int(),
+  "reference": zod.string(),
+  "shopId": zod.number().int().nullable(),
+  "shopName": zod.string().nullable(),
+  "customerName": zod.string(),
+  "phone": zod.string(),
+  "address": zod.string(),
+  "deliveryOption": zod.string(),
+  "deliveryFee": zod.number(),
+  "subtotal": zod.number(),
+  "discountAmount": zod.number(),
+  "total": zod.number(),
+  "discountCode": zod.string().nullable(),
+  "paymentMethod": zod.enum(['cod', 'bkash', 'nagad', 'rocket', 'upay', 'bank', 'card']),
+  "paymentStatus": zod.enum(['pending', 'paid', 'failed', 'refunded']),
+  "status": zod.enum(['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled']),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "productId": zod.number().int().nullable(),
+  "productName": zod.string(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "quantity": zod.number().int(),
+  "lineTotal": zod.number()
+}))
+})
+
+
+/**
+ * @summary Record cash received for a COD order in this shop
+ */
+
+
+
+
+export const MerchantConfirmCodPaymentParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1),
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const MerchantConfirmCodPaymentResponse = zod.object({
+  "paymentStatus": zod.enum(['pending', 'paid', 'failed', 'refunded'])
+})
+
+
+/**
+ * @summary Read delivery settings for this shop
+ */
+
+
+
+export const MerchantGetShopSettingsParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1)
+})
+
+export const merchantGetShopSettingsResponseDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const MerchantGetShopSettingsResponse = zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(merchantGetShopSettingsResponseDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Change the selected shop's delivery settings
+ */
+
+
+
+export const MerchantUpdateShopSettingsParams = zod.object({
+  "shopId": zod.coerce.number().int().min(1)
+})
+
+export const merchantUpdateShopSettingsBodyNameMin = 2;
+export const merchantUpdateShopSettingsBodyNameMax = 100;
+
+export const merchantUpdateShopSettingsBodyDescriptionMax = 500;
+
+export const merchantUpdateShopSettingsBodyDeliveryChargeMin = 0;
+export const merchantUpdateShopSettingsBodyDeliveryChargeMax = 100000;
+
+export const merchantUpdateShopSettingsBodyMinimumOrderMin = 0;
+export const merchantUpdateShopSettingsBodyMinimumOrderMax = 10000000;
+
+export const merchantUpdateShopSettingsBodyDeliveryOptionsItemFeeMin = 0;
+
+export const merchantUpdateShopSettingsBodyDeliveryOptionsMax = 10;
+
+
+
+export const MerchantUpdateShopSettingsBody = zod.object({
+  "name": zod.string().min(merchantUpdateShopSettingsBodyNameMin).max(merchantUpdateShopSettingsBodyNameMax).optional(),
+  "description": zod.string().max(merchantUpdateShopSettingsBodyDescriptionMax).optional(),
+  "deliveryCharge": zod.number().min(merchantUpdateShopSettingsBodyDeliveryChargeMin).max(merchantUpdateShopSettingsBodyDeliveryChargeMax).optional(),
+  "minimumOrder": zod.number().min(merchantUpdateShopSettingsBodyMinimumOrderMin).max(merchantUpdateShopSettingsBodyMinimumOrderMax).optional(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(merchantUpdateShopSettingsBodyDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+})).max(merchantUpdateShopSettingsBodyDeliveryOptionsMax).optional()
+})
+
+export const merchantUpdateShopSettingsResponseDeliveryOptionsItemFeeMin = 0;
+
+
+
+export const MerchantUpdateShopSettingsResponse = zod.object({
+  "id": zod.number().int(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "deliveryCharge": zod.number(),
+  "minimumOrder": zod.number(),
+  "deliveryOptions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "fee": zod.number().min(merchantUpdateShopSettingsResponseDeliveryOptionsItemFeeMin),
+  "active": zod.boolean()
+}))
+})
 
 

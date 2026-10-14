@@ -1,7 +1,9 @@
+import { eq, isNull } from "drizzle-orm";
 import { db, pool } from "./index";
 import { categories } from "./schema/categories";
 import { products } from "./schema/products";
 import { storeSettings } from "./schema/store-settings";
+import { shops } from "./schema/shops";
 
 const categorySeeds = [
   { slug: "pantry", name: "চাল ও ডাল", sortOrder: 1 },
@@ -25,6 +27,22 @@ async function seed() {
   await db.insert(categories).values(categorySeeds).onConflictDoNothing();
   const savedCategories = await db.select().from(categories);
   const categoryIds = new Map(savedCategories.map((category) => [category.slug, category.id]));
+  await db
+    .insert(shops)
+    .values({
+      slug: "homna-mart",
+      name: "Homna Mart",
+      description: "হোমনা, কুমিল্লার নিত্যপ্রয়োজনীয় পণ্যের দোকান",
+      deliveryCharge: "30",
+      minimumOrder: "0",
+      deliveryOptions: [
+        { id: "homna-town", label: "হোমনা সদর", fee: 30, active: true },
+        { id: "nearby", label: "আশেপাশের এলাকা", fee: 50, active: true },
+      ],
+    })
+    .onConflictDoNothing();
+  const [defaultShop] = await db.select().from(shops).where(eq(shops.slug, "homna-mart")).limit(1);
+  if (!defaultShop) throw new Error("Default Homna Mart shop could not be created.");
 
   await db
     .insert(products)
@@ -32,11 +50,13 @@ async function seed() {
       productSeeds.map(({ categorySlug, ...product }) => ({
         ...product,
         categoryId: categoryIds.get(categorySlug) ?? null,
+        shopId: defaultShop.id,
         imageUrl: null,
         isVisible: true,
       })),
     )
     .onConflictDoNothing();
+  await db.update(products).set({ shopId: defaultShop.id }).where(isNull(products.shopId));
 
   await db
     .insert(storeSettings)

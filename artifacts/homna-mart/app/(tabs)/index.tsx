@@ -1,7 +1,9 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useMemo, useState } from 'react';
+import { useAuth } from '@clerk/expo';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import {
   Image,
   Keyboard,
@@ -35,6 +37,7 @@ type CartLine = ApiProduct & { quantity: number };
 type CheckoutErrors = { name?: string; phone?: string; address?: string };
 type SubmittedOrder = {
   reference: string;
+  shopName: string;
   customerName: string;
   phone: string;
   address: string;
@@ -65,6 +68,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { isSignedIn } = useAuth();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const productsQuery = useListProducts();
   const categoriesQuery = useListCategories();
@@ -93,6 +98,7 @@ export default function HomeScreen() {
   const [discountCode, setDiscountCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; amount: number } | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
+  const [cartNotice, setCartNotice] = useState('');
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [lastOrder, setLastOrder] = useState<SubmittedOrder | null>(null);
 
@@ -104,13 +110,14 @@ export default function HomeScreen() {
     (sum, item) => sum + item.price * item.quantity,
     0,
   );
-  const deliveryOptions = settingsQuery.data?.deliveryOptions ?? [];
+  const cartShop = cartLines[0]?.shop ?? null;
+  const deliveryOptions = cartShop?.deliveryOptions ?? settingsQuery.data?.deliveryOptions ?? [];
   const paymentMethods = paymentMethodsQuery.data?.methods ?? [
     { code: 'cod' as const, label: 'ক্যাশ অন ডেলিভারি', enabled: true, availabilityNote: 'পণ্য হাতে পেয়ে টাকা দিন' },
   ];
   const selectedDelivery =
     deliveryOptions.find((option) => option.id === deliveryOptionId) ?? deliveryOptions[0];
-  const deliveryCharge = selectedDelivery?.fee ?? settingsQuery.data?.deliveryCharge ?? 30;
+  const deliveryCharge = selectedDelivery?.fee ?? cartShop?.deliveryCharge ?? settingsQuery.data?.deliveryCharge ?? 30;
   const discountAmount = appliedDiscount?.amount ?? 0;
   const total = subtotal + (itemCount ? deliveryCharge : 0) - discountAmount;
   const filteredProducts = products.filter((product) => {
@@ -135,12 +142,18 @@ export default function HomeScreen() {
 
   const updateQuantity = (productId: number, delta: number) => {
     feelTap();
+    const product = products.find((item) => item.id === productId);
+    const existingShopId = cartLines[0]?.shop?.id;
+    if (delta > 0 && existingShopId && product?.shop?.id !== existingShopId) {
+      setCartNotice('একটি অর্ডারে এক দোকানের পণ্য রাখা যায়। অন্য দোকান বেছে নিতে আগে কার্ট খালি করুন।');
+      return;
+    }
+    setCartNotice('');
     setLastOrder(null);
     setAppliedDiscount(null);
     setCheckoutError('');
     setCart((current) => {
       const nextQuantity = (current[productId] ?? 0) + delta;
-      const product = products.find((item) => item.id === productId);
       if (delta > 0 && (!product || nextQuantity > product.stock)) return current;
       const next = { ...current };
       if (nextQuantity <= 0) delete next[productId];
@@ -195,6 +208,7 @@ export default function HomeScreen() {
       });
       setLastOrder({
         reference: receipt.reference,
+        shopName: receipt.shopName,
         customerName: customerName.trim(),
         phone: phone.trim(),
         address: address.trim(),
@@ -204,6 +218,7 @@ export default function HomeScreen() {
       setCart({});
       setDiscountCode('');
       setAppliedDiscount(null);
+      setCartNotice('');
       setErrors({});
       await queryClient.invalidateQueries();
     } catch (error) {
@@ -252,32 +267,40 @@ export default function HomeScreen() {
                   </View>
                 </View>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`কার্ট, ${toBanglaDigits(itemCount)}টি পণ্য`}
-                testID="header-cart-button"
-                onPress={() => {
-                  feelTap();
-                  setScreen('cart');
-                }}
-                style={({ pressed }) => [
-                  styles.headerCartButton,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Feather
-                  name="shopping-bag"
-                  size={21}
-                  color={colors.primaryForeground}
-                />
-                {itemCount > 0 && (
-                  <View style={styles.headerCartBadge}>
-                    <Text style={styles.headerCartBadgeText}>
-                      {toBanglaDigits(itemCount)}
-                    </Text>
-                  </View>
-                )}
-              </Pressable>
+              <View style={styles.headerActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="অ্যাকাউন্ট খুলুন"
+                  onPress={() => router.push('/account')}
+                  style={({ pressed }) => [styles.headerAccountButton, pressed && styles.pressed]}
+                >
+                  <Feather name="user" size={18} color={colors.primaryForeground} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push(isSignedIn ? '/account' : '/sign-in')}
+                  style={({ pressed }) => [styles.headerLoginButton, pressed && styles.pressed]}
+                >
+                  <Text style={styles.headerLoginText}>{isSignedIn ? 'প্রোফাইল' : 'লগইন'}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`কার্ট, ${toBanglaDigits(itemCount)}টি পণ্য`}
+                  testID="header-cart-button"
+                  onPress={() => {
+                    feelTap();
+                    setScreen('cart');
+                  }}
+                  style={({ pressed }) => [styles.headerCartButton, pressed && styles.pressed]}
+                >
+                  <Feather name="shopping-bag" size={21} color={colors.primaryForeground} />
+                  {itemCount > 0 && (
+                    <View style={styles.headerCartBadge}>
+                      <Text style={styles.headerCartBadgeText}>{toBanglaDigits(itemCount)}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              </View>
             </View>
             {screen === 'home' && (
               <View style={styles.searchBox}>
@@ -351,6 +374,7 @@ export default function HomeScreen() {
               />
               <View style={styles.heroGlow} />
             </View>
+            {cartNotice ? <Text accessibilityRole="alert" style={styles.cartNotice}>{cartNotice}</Text> : null}
 
             <View style={styles.sectionHeadingRow}>
               <View>
@@ -433,6 +457,7 @@ export default function HomeScreen() {
               <View style={styles.productGrid}>
                 {filteredProducts.map((product) => {
                   const quantity = cart[product.id] ?? 0;
+                  const belongsToAnotherShop = Boolean(cartShop?.id && product.shop?.id !== cartShop.id);
                   return (
                     <View
                       key={product.id}
@@ -453,6 +478,9 @@ export default function HomeScreen() {
                         <Text style={styles.productName} numberOfLines={1}>
                           {product.name}
                         </Text>
+                        <Text style={styles.productShopName} numberOfLines={1}>
+                          {product.shop?.name ?? 'স্থানীয় দোকান'}
+                        </Text>
                         <Text style={styles.productUnit}>{product.unit}</Text>
                         <View style={styles.productActionRow}>
                           <Text style={styles.productPrice}>{taka(product.price)}</Text>
@@ -462,14 +490,18 @@ export default function HomeScreen() {
                               accessibilityLabel={`${product.name} কার্টে যোগ করুন`}
                               testID={`add-${product.id}`}
                               onPress={() => updateQuantity(product.id, 1)}
-                              disabled={product.stock <= 0}
+                              disabled={product.stock <= 0 || belongsToAnotherShop}
                               style={({ pressed }) => [
                                 styles.addButton,
-                                product.stock <= 0 && { opacity: 0.45 },
+                                (product.stock <= 0 || belongsToAnotherShop) && { opacity: 0.45 },
                                 pressed && styles.pressed,
                               ]}
                             >
-                              <Feather name="plus" size={17} color={colors.primaryForeground} />
+                              {belongsToAnotherShop ? (
+                                <Feather name="lock" size={14} color={colors.primaryForeground} />
+                              ) : (
+                                <Feather name="plus" size={17} color={colors.primaryForeground} />
+                              )}
                             </Pressable>
                           ) : (
                             <View style={styles.quantityControl}>
@@ -590,7 +622,11 @@ export default function HomeScreen() {
                   {itemCount > 0 && (
                     <Pressable
                       accessibilityRole="button"
-                      onPress={() => setCart({})}
+                      onPress={() => {
+                        setCart({});
+                        setCartNotice('');
+                        setAppliedDiscount(null);
+                      }}
                       style={styles.clearCartButton}
                     >
                       <Feather name="trash-2" size={14} color={colors.destructive} />
@@ -622,6 +658,12 @@ export default function HomeScreen() {
                   </View>
                 ) : (
                   <>
+                    {cartShop ? (
+                      <View style={styles.cartShopBanner}>
+                        <Feather name="shopping-bag" size={16} color={colors.primary} />
+                        <Text style={styles.cartShopText}>এই অর্ডার: {cartShop.name}</Text>
+                      </View>
+                    ) : null}
                     <View style={styles.cartList}>
                       {cartLines.map((item) => (
                         <View key={item.id} style={styles.cartItem}>

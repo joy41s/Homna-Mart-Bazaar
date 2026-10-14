@@ -1,5 +1,6 @@
 import {
   integer,
+  index,
   numeric,
   pgTable,
   serial,
@@ -9,12 +10,15 @@ import {
 } from "drizzle-orm/pg-core";
 import { discounts } from "./discounts";
 import { products } from "./products";
+import { shops } from "./shops";
 
 export const orders = pgTable(
   "orders",
   {
     id: serial("id").primaryKey(),
     reference: text("reference").notNull(),
+    shopId: integer("shop_id").references(() => shops.id, { onDelete: "set null" }),
+    customerClerkUserId: text("customer_clerk_user_id"),
     customerName: text("customer_name").notNull(),
     phone: text("phone").notNull(),
     address: text("address").notNull(),
@@ -31,7 +35,11 @@ export const orders = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex("orders_reference_unique").on(table.reference)],
+  (table) => [
+    uniqueIndex("orders_reference_unique").on(table.reference),
+    index("orders_shop_idx").on(table.shopId),
+    index("orders_customer_user_idx").on(table.customerClerkUserId),
+  ],
 );
 
 export const orderItems = pgTable("order_items", {

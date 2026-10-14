@@ -38,5 +38,7 @@ export interface ProductPatch {
   categoryId?: number | null;
   /** @maxLength 1000 */
   imageUrl?: string | null;
+  /** @minimum 1 */
+  shopId?: number;
   isVisible?: boolean;
 }
